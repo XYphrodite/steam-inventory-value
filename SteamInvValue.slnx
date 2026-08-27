@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SteamInvValue.Cli/SteamInvValue.Cli.csproj" />
+    <Project Path="src/SteamInvValue.Core/SteamInvValue.Core.csproj" />
+    <Project Path="src/SteamInvValue.Web/SteamInvValue.Web.csproj" />
+  </Folder>
+</Solution>

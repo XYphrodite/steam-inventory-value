@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Инвентари Steam</title>
+<style>
+  :root{--bg:#11161d;--panel:#1a212b;--line:#2a3542;--txt:#e6edf3;--dim:#8b98a8;--acc:#4a9eff;--ok:#3fb950;--warn:#d29922;--bad:#f85149}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt)}
+  a{color:var(--acc)}
+  .top{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+  .top h1{font-size:16px;margin:0;font-weight:600}
+  .total{margin-left:auto;text-align:right}
+  .total .v{font-size:19px;font-weight:600}
+  .total .s{font-size:12px;color:var(--dim)}
+  .layout{display:flex;align-items:flex-start;gap:16px;padding:16px;max-width:1500px;margin:0 auto}
+  .side{flex:0 0 300px;position:sticky;top:16px}
+  .main{flex:1 1 auto;min-width:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+  .card h3{margin:0 0 10px;font-size:14px;font-weight:600}
+  input,select,button,textarea{font:inherit;color:var(--txt);background:#0d1117;border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+  input,select,textarea{width:100%}
+  button{background:#222c38;border-color:var(--line);cursor:pointer;width:auto}
+  button:hover{border-color:var(--acc)}
+  button.pri{background:var(--acc);border-color:var(--acc);color:#04121f;font-weight:600}
+  button.sm{padding:3px 8px;font-size:12px}
+  button:disabled{opacity:.45;cursor:default}
+  label{color:var(--dim);font-size:12px;display:block;margin:0 0 4px}
+  .field{margin-bottom:9px}
+  .prof{border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:8px;cursor:pointer;background:#0d1117}
+  .prof:hover{border-color:var(--acc)}
+  .prof.sel{border-color:var(--acc);background:#132030}
+  .prof .nm{font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .prof .sub{color:var(--dim);font-size:12px;display:flex;justify-content:space-between;gap:8px;margin-top:2px}
+  .prof .acts{display:flex;gap:6px;margin-top:7px}
+  .dot{width:7px;height:7px;border-radius:99px;display:inline-block;flex:0 0 auto}
+  .dot.run{background:var(--warn);animation:pulse 1s infinite alternate}
+  .dot.err{background:var(--bad)}
+  .dot.ok{background:var(--ok)}
+  .dot.off{background:var(--dim)}
+  @keyframes pulse{from{opacity:.3}to{opacity:1}}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:11px}
+  .tile{background:#0d1117;border:1px solid var(--line);border-radius:9px;padding:12px}
+  .tile .k{color:var(--dim);font-size:12px}
+  .tile .v{font-size:20px;font-weight:600;margin:3px 0}
+  .tile .s{color:var(--dim);font-size:12px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--dim);font-weight:500;font-size:12px}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  pre#log{background:#0d1117;border:1px solid var(--line);border-radius:7px;padding:10px;max-height:170px;overflow:auto;font:12px/1.45 Consolas,monospace;color:var(--dim);white-space:pre-wrap;margin:0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+  .it{background:#0d1117;border:1px solid var(--line);border-radius:9px;padding:9px;display:flex;flex-direction:column;gap:5px}
+  .it img{width:100%;height:92px;object-fit:contain;background:#161c24;border-radius:6px}
+  .it .nm{font-size:12px;line-height:1.35;height:48px;overflow:hidden}
+  .it .pr{font-size:15px;font-weight:600}
+  .it .q{font-size:11px;color:var(--dim);display:flex;justify-content:space-between}
+  .badge{font-size:10px;padding:1px 6px;border-radius:99px;border:1px solid var(--line);color:var(--dim)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .row>div{flex:1 1 150px}
+  .row>div.grow{flex:3 1 260px}
+  .chk{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:13px}
+  .chk input{width:auto}
+  .muted{color:var(--dim)}
+  .hidden{display:none}
+  @media(max-width:900px){.layout{flex-direction:column}.side{position:static;flex:1 1 auto;width:100%}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Инвентари Steam</h1>
+  <button id="refreshAll">Обновить все</button>
+  <button id="toggleSettings">Настройки</button>
+  <div class="total"><div class="v" id="totalRub">—</div><div class="s" id="totalUsd"></div></div>
+</div>
+
+<div class="layout">
+  <div class="side">
+    <div class="card">
+      <h3>Под наблюдением</h3>
+      <div id="profiles"><div class="muted">загрузка…</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Добавить инвентарь</h3>
+      <div class="field"><label>Ссылка, ник или SteamID64</label>
+        <input type="text" id="newProfile" placeholder="https://steamcommunity.com/id/nickname"></div>
+      <div class="field"><label>Имя в списке (необязательно)</label><input type="text" id="newName"></div>
+      <div class="field"><label>Игры, appid через запятую (пусто — все)</label><input type="text" id="newApps" placeholder="730,753"></div>
+      <button class="pri" id="add">Добавить и посчитать</button>
+      <div id="addErr" class="muted" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card hidden" id="settings">
+      <h3>Настройки</h3>
+      <div class="field"><label class="chk"><input type="checkbox" id="setSteam"> спрашивать Steam Market</label></div>
+      <div class="field"><label>Лимит имён для Steam за запуск</label><input type="text" id="setBudget"></div>
+      <div class="field"><label>Пауза между запросами к Steam, мс</label><input type="text" id="setDelay"></div>
+      <div class="field"><label>Автообновление, минут (0 — вручную)</label><input type="text" id="setAuto"></div>
+      <div class="field"><label>Язык названий</label>
+        <select id="setLang"><option value="english">english</option><option value="russian">russian</option></select></div>
+      <div class="field"><label>Прокси (http:// или socks5://)</label><input type="text" id="setProxy" placeholder="не задан"></div>
+      <div class="field"><label>Cookie steamLoginSecure</label><input type="text" id="setCookie" placeholder="не задан"></div>
+      <button class="pri" id="saveSettings">Сохранить</button>
+      <div class="muted" style="margin-top:9px;font-size:12px" id="cfgPath"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="card hidden" id="logCard"><h3 id="logTitle">Работаю</h3><pre id="log"></pre></div>
+
+    <div id="empty" class="card muted">Выбери инвентарь слева или добавь новый.</div>
+
+    <div id="out" class="hidden">
+      <div class="card">
+        <div id="who" class="muted" style="margin-bottom:11px"></div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div class="card"><h3>История стоимости</h3><div id="history"></div></div>
+      <div class="card"><h3>По площадкам</h3><div id="prov"></div></div>
+      <div class="card" id="appsCard"><h3>По играм</h3><div id="apps_t"></div></div>
+      <div class="card">
+        <h3>Предметы</h3>
+        <div class="row" style="margin-bottom:11px">
+          <div class="grow"><label>Поиск</label><input type="text" id="q" placeholder="AK-47…"></div>
+          <div><label>Сортировка</label><select id="sort">
+            <option value="total">по стоимости</option><option value="unit">по цене за штуку</option>
+            <option value="count">по количеству</option><option value="name">по названию</option>
+          </select></div>
+          <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyPriced" checked> только с ценой</label></div>
+          <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyTradable"> только торгуемые</label></div>
+        </div>
+        <div id="count" class="muted" style="margin-bottom:10px"></div>
+        <div class="grid" id="items"></div>
+        <div style="margin-top:12px"><button id="more" class="hidden">Показать ещё</button></div>
+      </div>
+      <div class="card hidden" id="notesCard"><h3>Замечания</h3><ul id="notes" class="muted"></ul></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const el = id => document.getElementById(id);
+const money = (n, d = 2) => (n ?? 0).toLocaleString('ru-RU', {minimumFractionDigits: d, maximumFractionDigits: d});
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tile = (k, v, s) => '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>';
+const dt = s => s ? new Date(s).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+
+let state = null, selected = null, report = null, shown = 0, settingsLoaded = false;
+
+// ---- список инвентарей -------------------------------------------------------------------
+
+async function loadState() {
+  state = await (await fetch('/api/state')).json();
+  el('totalRub').textContent = money(state.totalRub, 0) + ' ₽';
+  el('totalUsd').textContent = money(state.totalUsd) + ' $ по всем инвентарям';
+  el('cfgPath').textContent = 'Конфиг: ' + state.configPath;
+
+  if (!settingsLoaded) fillSettings();
+
+  el('profiles').innerHTML = state.profiles.length === 0
+    ? '<div class="muted">Пусто — добавь инвентарь ниже.</div>'
+    : state.profiles.map(p => {
+        const cls = p.status === 'running' ? 'run' : p.status === 'error' ? 'err' : !p.enabled ? 'off' : p.hasReport ? 'ok' : 'off';
+        return '<div class="prof' + (selected === p.id ? ' sel' : '') + '" data-id="' + p.id + '">' +
+          '<div class="nm"><span>' + esc(p.name) + '</span><span class="dot ' + cls + '"></span></div>' +
+          '<div class="sub"><span>' + money(p.bestRub, 0) + ' ₽</span><span>' + p.items + ' шт</span></div>' +
+          '<div class="sub"><span>' + dt(p.lastRun) + '</span><span>' + (p.apps ? p.apps.join(',') : 'все игры') + '</span></div>' +
+          '<div class="acts">' +
+            '<button class="sm" data-act="refresh">обновить</button>' +
+            '<button class="sm" data-act="toggle">' + (p.enabled ? 'выкл' : 'вкл') + '</button>' +
+            '<button class="sm" data-act="del">удалить</button>' +
+          '</div></div>';
+      }).join('');
+
+  const sel = state.profiles.find(p => p.id === selected);
+  if (sel && sel.status === 'running') pollLog(sel.id);
+}
+
+el('profiles').onclick = async e => {
+  const card = e.target.closest('.prof');
+  if (!card) return;
+  const id = card.dataset.id;
+  const act = e.target.dataset && e.target.dataset.act;
+
+  if (act === 'refresh') { await fetch('/api/profiles/' + id + '/refresh', {method: 'POST'}); return loadState(); }
+  if (act === 'toggle')  { await fetch('/api/profiles/' + id + '/toggle',  {method: 'POST'}); return loadState(); }
+  if (act === 'del') {
+    if (!confirm('Убрать инвентарь из наблюдения вместе с историей?')) return;
+    await fetch('/api/profiles/' + id, {method: 'DELETE'});
+    if (selected === id) { selected = null; report = null; el('out').classList.add('hidden'); el('empty').classList.remove('hidden'); }
+    return loadState();
+  }
+  select(id);
+};
+
+async function select(id) {
+  selected = id;
+  await loadState();
+  await loadReport(id);
+  const p = state.profiles.find(x => x.id === id);
+  if (p && p.status === 'running') pollLog(id);
+}
+
+// ---- отчёт -------------------------------------------------------------------------------
+
+async function loadReport(id) {
+  const resp = await fetch('/api/report/' + id);
+  if (!resp.ok) {
+    report = null;
+    el('out').classList.add('hidden');
+    el('empty').classList.remove('hidden');
+    el('empty').textContent = 'Отчёта ещё нет — нажми «обновить» у этого инвентаря.';
+    return;
+  }
+  report = await resp.json();
+  el('empty').classList.add('hidden');
+  el('out').classList.remove('hidden');
+  render();
+  renderHistory(id);
+}
+
+function render() {
+  const r = report;
+  el('who').innerHTML = esc(r.personaName || '') + ' · <a href="' + r.profileUrl + '" target="_blank">' + r.profileUrl + '</a>' +
+    ' · собрано ' + new Date(r.generatedAt).toLocaleString('ru-RU') + ' · курс ЦБ ' + money(r.usdRub) + ' ₽/$';
+
+  const b = r.bestSplit, s = r.steamNet, g = r.steamGross;
+  const cmp = r.bestWhereSteamKnown || b;
+  const diff = (s.usd > 0 && r.steamCovered > 0) ? ((cmp.usd / s.usd - 1) * 100) : 0;
+  const partial = r.steamCovered < r.pricedItems;
+
+  el('tiles').innerHTML =
+    tile('Лучшая площадка, живые деньги', money(b.rub, 0) + ' ₽', money(b.usd) + ' $ · ' + money(b.usdt) + ' USDT · ' + money(b.btc, 8) + ' BTC') +
+    tile('Steam, на руки', money(s.rub, 0) + ' ₽', money(s.usd) + ' $ · только внутри кошелька Steam') +
+    tile('Steam, ценник для покупателя', money(g.rub, 0) + ' ₽', money(g.usd) + ' $ · до комиссии 15%') +
+    tile('Выгода против Steam', (diff >= 0 ? '+' : '') + money(diff, 1) + ' %',
+         'по ' + r.steamCovered + ' из ' + r.pricedItems + ' позиций' + (partial ? ' · Steam опрошен не полностью' : '')) +
+    tile('Предметов', r.totalItems + ' шт', r.uniqueItems + ' уникальных · с ценой ' + r.pricedItems + ', без цены ' + r.unpricedItems) +
+    tile('Ликвидность', r.tradableItems + ' шт торгуемых', r.marketableItems + ' шт продаваемых на маркете');
+
+  el('prov').innerHTML = '<table><tr><th>Площадка</th><th class="n">Ценник, $</th><th class="n">На руки, $</th><th class="n">На руки, ₽</th><th class="n">Позиций</th></tr>' +
+    r.byProvider.map(p => '<tr><td>' + esc(p.provider) + '</td><td class="n">' + money(p.listUsd) + '</td><td class="n">' +
+      money(p.payoutUsd) + '</td><td class="n">' + money(p.payoutUsd * r.usdRub, 0) + '</td><td class="n">' + p.covered + '</td></tr>').join('') + '</table>';
+
+  el('appsCard').classList.toggle('hidden', r.byApp.length < 2);
+  el('apps_t').innerHTML = '<table><tr><th>Игра</th><th class="n">Предметов</th><th class="n">Лучшая цена, $</th><th class="n">Steam, $</th><th class="n">₽</th></tr>' +
+    r.byApp.map(a => '<tr><td>' + esc(a.appName) + '</td><td class="n">' + a.items + '</td><td class="n">' + money(a.bestUsd) +
+      '</td><td class="n">' + money(a.steamUsd) + '</td><td class="n">' + money(a.bestUsd * r.usdRub, 0) + '</td></tr>').join('') + '</table>';
+
+  el('notesCard').classList.toggle('hidden', !(r.notes && r.notes.length));
+  if (r.notes && r.notes.length) el('notes').innerHTML = r.notes.map(n => '<li>' + esc(n) + '</li>').join('');
+
+  renderItems();
+}
+
+// ---- история -----------------------------------------------------------------------------
+
+async function renderHistory(id) {
+  const hist = await (await fetch('/api/history/' + id + '?limit=200')).json();
+  if (!hist.length) { el('history').innerHTML = '<div class="muted">Это первый замер — история появится со второго.</div>'; return; }
+
+  const w = 640, h = 90, pad = 4;
+  const vals = hist.map(s => s.bestRub);
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const pts = hist.map((s, i) => {
+    const x = hist.length === 1 ? w / 2 : pad + i * (w - 2 * pad) / (hist.length - 1);
+    const y = h - pad - (s.bestRub - min) / span * (h - 2 * pad);
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+
+  const first = hist[0], last = hist[hist.length - 1];
+  const change = first.bestRub > 0 ? (last.bestRub / first.bestRub - 1) * 100 : 0;
+
+  const rows = hist.slice(-12).reverse().map((s, i, arr) => {
+    const prev = arr[i + 1];
+    const d = prev && prev.bestUsd > 0 ? ((s.bestUsd / prev.bestUsd - 1) * 100) : null;
+    return '<tr><td>' + new Date(s.at).toLocaleString('ru-RU') + '</td><td class="n">' + money(s.bestRub, 0) +
+      '</td><td class="n">' + money(s.bestUsd) + '</td><td class="n">' +
+      (d === null ? '—' : (d >= 0 ? '+' : '') + money(d, 1) + '%') + '</td><td class="n">' + s.items + '</td></tr>';
+  }).join('');
+
+  el('history').innerHTML =
+    '<div class="muted" style="margin-bottom:8px">' + hist.length + ' замеров · за всё время ' +
+      (change >= 0 ? '+' : '') + money(change, 1) + '% · минимум ' + money(min, 0) + ' ₽, максимум ' + money(max, 0) + ' ₽</div>' +
+    '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:90px;display:block;margin-bottom:10px">' +
+      '<polyline points="' + pts + '" fill="none" stroke="#4a9eff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>' +
+    '<table><tr><th>Замер</th><th class="n">₽</th><th class="n">$</th><th class="n">изм.</th><th class="n">предметов</th></tr>' + rows + '</table>';
+}
+
+// ---- предметы ----------------------------------------------------------------------------
+
+function filtered() {
+  const q = el('q').value.trim().toLowerCase();
+  const list = report.items.filter(p =>
+    (!el('onlyPriced').checked || p.bestTotalUsd > 0) &&
+    (!el('onlyTradable').checked || p.item.tradable) &&
+    (!q || (p.item.marketHashName || p.item.name).toLowerCase().includes(q)));
+
+  const key = {
+    total: p => -p.bestTotalUsd,
+    unit: p => -((p.best && p.best.payoutUsd) || 0),
+    count: p => -p.item.count,
+  }[el('sort').value];
+
+  list.sort(key ? (a, b) => key(a) - key(b)
+                : (a, b) => (a.item.marketHashName || a.item.name).localeCompare(b.item.marketHashName || b.item.name));
+  return list;
+}
+
+function renderItems(reset = true) {
+  const list = filtered();
+  if (reset) { shown = 0; el('items').innerHTML = ''; }
+  const slice = list.slice(shown, shown + 60);
+  shown += slice.length;
+
+  el('count').textContent = list.length + ' позиций · ' + list.reduce((s, p) => s + p.item.count, 0) + ' шт · ' +
+    money(list.reduce((s, p) => s + p.bestTotalUsd, 0)) + ' $';
+
+  el('items').insertAdjacentHTML('beforeend', slice.map(p => {
+    const i = p.item, best = p.best;
+    const quotes = (p.quotes || []).slice().sort((a, b) => b.payoutUsd - a.payoutUsd)
+      .map(q => '<div class="q"><span>' + esc(q.provider) + '</span><span>' + money(q.payoutUsd) + ' $</span></div>').join('');
+    return '<div class="it">' +
+      '<img loading="lazy" src="' + (i.iconUrl ? '/img/' + i.iconUrl + '/128fx128f' : '') + '" alt="">' +
+      '<div class="nm">' + esc(i.marketHashName || i.name) + '</div>' +
+      '<div class="pr">' + (best ? money(p.bestTotalUsd * report.usdRub, 0) + ' ₽' : '<span class="muted">нет цены</span>') + '</div>' +
+      '<div class="q"><span>' + i.count + ' шт</span><span>' + (best ? money(best.payoutUsd) + ' $/шт' : '') + '</span></div>' +
+      quotes +
+      '<div><span class="badge">' + (i.tradable ? 'tradable' : 'no trade') + '</span> ' +
+      (i.rarity ? '<span class="badge">' + esc(i.rarity) + '</span>' : '') + '</div>' +
+    '</div>';
+  }).join(''));
+
+  el('more').classList.toggle('hidden', shown >= list.length);
+}
+
+// ---- лог текущего прогона ----------------------------------------------------------------
+
+let logTimer = null;
+async function pollLog(id) {
+  clearTimeout(logTimer);
+  const r = await (await fetch('/api/jobs/' + id)).json();
+  const prof = state.profiles.find(p => p.id === id);
+  el('logTitle').textContent = 'Считаю: ' + (prof ? prof.name : id);
+  el('logCard').classList.toggle('hidden', r.status === 'idle' || (r.log || []).length === 0);
+  el('log').textContent = (r.log || []).join('\n');
+  el('log').scrollTop = el('log').scrollHeight;
+
+  if (r.status === 'running') { logTimer = setTimeout(() => pollLog(id), 1500); return; }
+  await loadState();
+  if (selected === id) await loadReport(id);
+}
+
+// ---- добавление и настройки --------------------------------------------------------------
+
+el('add').onclick = async () => {
+  const profile = el('newProfile').value.trim();
+  if (!profile) return;
+  el('add').disabled = true;
+  el('addErr').textContent = 'Добавляю…';
+
+  const apps = el('newApps').value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  const resp = await fetch('/api/profiles', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({profile, name: el('newName').value.trim() || null, apps})
+  });
+  el('add').disabled = false;
+
+  if (!resp.ok) { el('addErr').textContent = (await resp.json()).error || 'не получилось'; return; }
+  const p = await resp.json();
+  el('addErr').textContent = '';
+  el('newProfile').value = el('newName').value = el('newApps').value = '';
+  await select(p.id);
+};
+
+el('refreshAll').onclick = async () => { await fetch('/api/refresh-all', {method: 'POST'}); loadState(); };
+el('toggleSettings').onclick = () => el('settings').classList.toggle('hidden');
+
+function fillSettings() {
+  const s = state.settings;
+  el('setSteam').checked = s.enabled;
+  el('setBudget').value = s.budget;
+  el('setDelay').value = s.delayMs;
+  el('setAuto').value = s.autoRefreshMinutes;
+  el('setLang').value = s.language;
+  el('setProxy').placeholder = s.hasProxy ? 'задан, оставь пустым чтобы не менять' : 'не задан';
+  el('setCookie').placeholder = s.hasCookie ? 'задан, оставь пустым чтобы не менять' : 'не задан';
+  settingsLoaded = true;
+}
+
+el('saveSettings').onclick = async () => {
+  const body = {
+    steamEnabled: el('setSteam').checked,
+    steamBudget: parseInt(el('setBudget').value) || 0,
+    steamDelayMs: parseInt(el('setDelay').value) || 0,
+    autoRefreshMinutes: parseInt(el('setAuto').value) || 0,
+    language: el('setLang').value,
+  };
+  if (el('setProxy').value.trim()) body.proxy = el('setProxy').value.trim();
+  if (el('setCookie').value.trim()) body.cookie = el('setCookie').value.trim();
+
+  await fetch('/api/settings', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  el('setProxy').value = el('setCookie').value = '';
+  settingsLoaded = false;
+  await loadState();
+};
+
+el('more').onclick = () => renderItems(false);
+['q', 'sort', 'onlyPriced', 'onlyTradable'].forEach(id => el(id).addEventListener('input', () => report && renderItems()));
+el('newProfile').addEventListener('keydown', e => { if (e.key === 'Enter') el('add').click(); });
+
+loadState().then(() => { if (state.profiles.length) select(state.profiles[0].id); });
+setInterval(loadState, 5000);
+</script>
+</body>
+</html>
