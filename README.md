@@ -1,3 +1,5 @@
+*Русский · [English](README.en.md)*
+
 # SteamInvValue — наблюдение за инвентарями Steam
 
 Следит за несколькими инвентарями Steam и считает, сколько они стоят: по Steam Community
