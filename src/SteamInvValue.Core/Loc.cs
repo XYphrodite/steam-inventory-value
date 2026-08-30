@@ -172,6 +172,10 @@ public static class S
         "Веб-морда запущена — перезапусти её, чтобы подхватила новую версию.",
         "The web app is running — restart it to pick up the new version.");
 
+    public static string GitHubRateLimited => Loc.Pick(
+        "GitHub временно ограничил запросы (60 в час на адрес) — попробуй через час.",
+        "GitHub is rate-limiting requests (60 per hour per address) — try again in an hour.");
+
     public static string UpdateFailed(string error) => Loc.Pick(
         $"Обновить не вышло: {error}", $"Update failed: {error}");
 

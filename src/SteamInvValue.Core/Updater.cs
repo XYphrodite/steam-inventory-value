@@ -83,8 +83,16 @@ public static class Updater
     public static async Task<(string Tag, IReadOnlyList<ReleaseAsset> Assets)> GetLatestAsync(
         CancellationToken ct = default)
     {
-        var json = await Http.Client.GetStringAsync(
+        using var response = await Http.Client.GetAsync(
             $"https://api.github.com/repos/{Repo}/releases/latest", ct);
+
+        // Аноним получает 60 запросов в час на IP. Голый «403» об этом не говорит ничего.
+        if (response.StatusCode is System.Net.HttpStatusCode.Forbidden
+                                or System.Net.HttpStatusCode.TooManyRequests)
+            throw new InvalidOperationException(S.GitHubRateLimited);
+
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync(ct);
         using var doc = JsonDocument.Parse(json);
 
         var tag = doc.RootElement.GetProperty("tag_name").GetString() ?? "";
