@@ -31,6 +31,15 @@ irm https://raw.githubusercontent.com/XYphrodite/steam-inventory-value/main/inst
 То же самое можно задать переменными: `STEAMINV_INSTALL_DIR`, `STEAMINV_COMPONENTS`,
 `STEAMINV_VERSION`. Ключ `-NoPath` не трогает `PATH`, `-Version v0.1.0` ставит конкретный релиз.
 
+## Проверка целостности
+
+Workflow считает SHA-256 обоих архивов и публикует их в описании релиза. Установщик и
+`steaminv update` сверяют скачанное с опубликованным: при расхождении файл удаляется, а
+обновление отменяется. Ключей и отдельной инфраструктуры это не требует, но подмену
+файла ловит — единственный путь, которым в систему мог бы приехать чужой код.
+
+Приём позаимствован из соседнего проекта [dst-farm-server](https://github.com/XYphrodite/dst-farm-server).
+
 ## Обновление
 
 ```powershell

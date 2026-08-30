@@ -235,6 +235,25 @@ try {
         # Assets of a private repository are only served from the API url with this Accept.
         Get-Download $asset.url $zip $tok
 
+        # The release notes carry a line like: - `steaminv-cli-win-x64.zip` - SHA-256 `<64 hex>`
+        # The lazy span matters: the file name itself contains hex letters (a, e, c).
+        $expected = $null
+        # Any character, not "non-hex": the words SHA-256 sit between the name and the hash,
+        # and A is a hex letter itself.
+        $pattern = [regex]::Escape($asset.name) + '[\s\S]{0,60}?([0-9a-fA-F]{64})'
+        if ($release.body -and $release.body -match $pattern) { $expected = $Matches[1].ToLowerInvariant() }
+
+        if ($expected) {
+            $actual = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $expected) {
+                Remove-Item $zip -Force -ErrorAction SilentlyContinue
+                throw "$($asset.name): SHA-256 mismatch. Expected $expected, got $actual"
+            }
+            Say '  SHA-256 verified'
+        } else {
+            Say '  release notes carry no SHA-256, skipping verification' 'Yellow'
+        }
+
         Expand-Archive -Path $zip -DestinationPath $dir -Force
         Say "  installed $($item.Exe)"
     }

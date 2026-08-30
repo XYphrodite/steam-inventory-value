@@ -471,7 +471,7 @@ async Task<int> UpdateAsync()
     try
     {
         Console.WriteLine(S.UpdateLooking);
-        var (tag, assets) = await Updater.GetLatestAsync(cts.Token);
+        var (tag, assets, notes) = await Updater.GetLatestAsync(cts.Token);
 
         if (!Updater.IsNewer(tag, Updater.CurrentVersion))
         {
@@ -504,6 +504,16 @@ async Task<int> UpdateAsync()
                 var zip = Path.Combine(temp, asset.Name);
                 await Updater.DownloadAsync(asset.Url, zip, ShowProgress, cts.Token);
                 ClearProgress();
+
+                // Сверяем с хешем из описания релиза: подменённый файл дальше не пойдёт.
+                var expected = Updater.ExpectedHash(notes, asset.Name);
+                if (expected is null) Console.WriteLine(S.HashMissing(asset.Name));
+                else if (await Updater.FileHashAsync(zip, cts.Token) != expected)
+                {
+                    File.Delete(zip);
+                    throw new InvalidOperationException(S.HashMismatch(asset.Name));
+                }
+                else Console.WriteLine(S.HashVerified);
 
                 var unpacked = Path.Combine(temp, Path.GetFileNameWithoutExtension(asset.Name));
                 System.IO.Compression.ZipFile.ExtractToDirectory(zip, unpacked, overwriteFiles: true);

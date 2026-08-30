@@ -176,6 +176,16 @@ public static class S
     public static string UpdateReplaced(string name) => Loc.Pick(
         $"  заменено: {name}", $"  replaced: {name}");
 
+    public static string HashVerified => Loc.Pick("  SHA-256 сошёлся", "  SHA-256 verified");
+
+    public static string HashMismatch(string name) => Loc.Pick(
+        $"{name}: SHA-256 не совпал с опубликованным. Файл удалён, обновление отменено.",
+        $"{name}: SHA-256 does not match the published one. File deleted, update aborted.");
+
+    public static string HashMissing(string name) => Loc.Pick(
+        $"  {name}: в описании релиза нет SHA-256, проверить нечем",
+        $"  {name}: the release notes carry no SHA-256, nothing to verify against");
+
     public static string UpdateFinished(string version) => Loc.Pick(
         $"Готово, версия {version}. Она заработает при следующем запуске.",
         $"Done, version {version}. It takes effect the next time you start the program.");

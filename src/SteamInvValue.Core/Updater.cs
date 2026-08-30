@@ -79,8 +79,8 @@ public static class Updater
     /// <summary>Файл релиза: имя архива и ссылка на скачивание.</summary>
     public sealed record ReleaseAsset(string Name, string Url, long Size);
 
-    /// <summary>Тег последнего релиза и его файлы — нужно для самообновления.</summary>
-    public static async Task<(string Tag, IReadOnlyList<ReleaseAsset> Assets)> GetLatestAsync(
+    /// <summary>Тег последнего релиза, его файлы и описание — нужно для самообновления.</summary>
+    public static async Task<(string Tag, IReadOnlyList<ReleaseAsset> Assets, string Notes)> GetLatestAsync(
         CancellationToken ct = default)
     {
         using var response = await Http.Client.GetAsync(
@@ -103,7 +103,32 @@ public static class Updater
                 a.GetProperty("browser_download_url").GetString() ?? "",
                 a.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0));
 
-        return (tag, assets);
+        var notes = doc.RootElement.TryGetProperty("body", out var body) ? body.GetString() ?? "" : "";
+        return (tag, assets, notes);
+    }
+
+    /// <summary>
+    /// Достаёт SHA-256 файла из описания релиза. Хеш публикуется строкой вида
+    /// «- `steaminv-cli-win-x64.zip` - SHA-256 `&lt;64 знака&gt;`»; ленивый поиск важен —
+    /// в самом имени файла тоже встречаются шестнадцатеричные буквы.
+    /// </summary>
+    public static string? ExpectedHash(string notes, string assetName)
+    {
+        if (string.IsNullOrEmpty(notes)) return null;
+
+        // Пропуск любых символов, а не «не-hex»: между именем и хешем стоит слово SHA-256,
+        // где A — тоже шестнадцатеричная буква.
+        var pattern = System.Text.RegularExpressions.Regex.Escape(assetName) + @"[\s\S]{0,60}?([0-9a-fA-F]{64})";
+        var match = System.Text.RegularExpressions.Regex.Match(notes, pattern);
+        return match.Success ? match.Groups[1].Value.ToLowerInvariant() : null;
+    }
+
+    /// <summary>Считает SHA-256 файла в том же виде, в каком он публикуется.</summary>
+    public static async Task<string> FileHashAsync(string path, CancellationToken ct = default)
+    {
+        await using var stream = File.OpenRead(path);
+        var hash = await System.Security.Cryptography.SHA256.HashDataAsync(stream, ct);
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     /// <summary>

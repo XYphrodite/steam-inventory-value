@@ -33,6 +33,17 @@ The same can be set through `STEAMINV_INSTALL_DIR`, `STEAMINV_COMPONENTS` and
 `STEAMINV_VERSION`. Use `-NoPath` to leave `PATH` alone and `-Version v0.1.0` for a specific
 release.
 
+## Integrity check
+
+The workflow computes the SHA-256 of both archives and publishes them in the release notes.
+The installer and `steaminv update` compare what they downloaded against what was published:
+on a mismatch the file is deleted and the update is aborted. This needs no keys and no separate
+infrastructure, yet it catches a swapped file — the one path by which foreign code could reach
+the machine.
+
+The approach is borrowed from the sibling project
+[dst-farm-server](https://github.com/XYphrodite/dst-farm-server).
+
 ## Updating
 
 ```powershell
