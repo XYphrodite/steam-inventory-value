@@ -56,6 +56,10 @@
   .it .nm{font-size:12px;line-height:1.35;height:48px;overflow:hidden}
   .it .pr{font-size:15px;font-weight:600}
   .it .q{font-size:11px;color:var(--dim);display:flex;justify-content:space-between}
+  .it .q a{color:var(--acc);text-decoration:none}
+  .it .q a:hover{text-decoration:underline}
+  .it .nm a{color:inherit;text-decoration:none}
+  .it .nm a:hover{color:var(--acc)}
   .badge{font-size:10px;padding:1px 6px;border-radius:99px;border:1px solid var(--line);color:var(--dim)}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
   .row>div{flex:1 1 150px}
@@ -414,7 +418,8 @@ function render() {
       '</th><th>' + t('colMarketplace') + '</th><th class="n">' + t('colSales') + '</th></tr>' +
       plan.map(p => '<tr><td>' + esc(appName(p.item.appId)) + '</td><td>' +
         esc(p.item.marketHashName || p.item.name) + '</td><td class="n">' +
-        money(p.bestTotalUsd * r.usdRub, 0) + '</td><td>' + esc(p.best.provider) + '</td><td class="n">' +
+        money(p.bestTotalUsd * r.usdRub, 0) + '</td><td>' +
+        link(listingUrl(p.best.provider, p.item), esc(p.best.provider)) + '</td><td class="n">' +
         (p.steam ? (p.steamVolume || 0) : '—') + '</td></tr>').join('') + '</table>';
     el('planTail').textContent = r.tailPositions > 0
       ? t('planTail')(r.tailPositions, money((r.tailValue || {rub: 0}).rub, 0)) : '';
@@ -493,6 +498,19 @@ function filtered() {
   return list;
 }
 
+// Для Steam адрес лота предсказуем, у остальных — поиск по имени: их адреса предметов
+// формируются по-своему и без гарантий, а поиск работает всегда.
+function listingUrl(provider, item) {
+  const name = encodeURIComponent(item.marketHashName || item.name);
+  if (provider === 'Steam') return 'https://steamcommunity.com/market/listings/' + item.appId + '/' + name;
+  if (provider === 'Skinport') return 'https://skinport.com/market?search=' + name;
+  if (provider === 'Waxpeer') return 'https://waxpeer.com/?search=' + name;
+  if (provider === 'Market.CSGO') return 'https://market.csgo.com/?search=' + name;
+  return null;
+}
+
+const link = (url, text) => url ? '<a href="' + url + '" target="_blank" rel="noopener">' + text + '</a>' : text;
+
 function appName(appId) {
   const found = report.byApp.find(a => a.appId === appId);
   return found ? found.appName : String(appId);
@@ -512,14 +530,15 @@ function renderItems(reset = true) {
   el('items').insertAdjacentHTML('beforeend', slice.map(p => {
     const i = p.item, best = p.best;
     const quotes = (p.quotes || []).slice().sort((a, b) => b.payoutUsd - a.payoutUsd)
-      .map(q => '<div class="q"><span>' + esc(q.provider) + '</span><span>' + money(q.payoutUsd) + ' $</span></div>').join('');
+      .map(q => '<div class="q"><span>' + link(listingUrl(q.provider, i), esc(q.provider)) +
+                '</span><span>' + money(q.payoutUsd) + ' $</span></div>').join('');
     const badge = !i.tradable && !i.marketable ? t('badgeNoSell') : i.tradable ? t('badgeTradable') : t('badgeMarket');
     const sales = p.steam
       ? '<div class="q"><span>' + (p.steamVolume > 0 ? p.steamVolume + t('salesDay') : t('noSales')) + '</span><span></span></div>'
       : '';
     return '<div class="it">' +
       '<img loading="lazy" src="' + (i.iconUrl ? '/img/' + i.iconUrl + '/128fx128f' : '') + '" alt="">' +
-      '<div class="nm">' + esc(i.marketHashName || i.name) + '</div>' +
+      '<div class="nm">' + link(listingUrl('Steam', i), esc(i.marketHashName || i.name)) + '</div>' +
       '<div class="pr">' + (best ? money(p.bestTotalUsd * report.usdRub, 0) + ' ' + t('rub') : '<span class="muted">' + t('noPrice') + '</span>') + '</div>' +
       '<div class="q"><span>' + i.count + ' ' + t('pcs') + '</span><span>' + (best ? money(best.payoutUsd) + t('perPc') : '') + '</span></div>' +
       quotes + sales +

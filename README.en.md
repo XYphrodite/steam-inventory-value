@@ -181,6 +181,10 @@ the money, and the rest is a long tail where every position needs its own listin
 report computes the minimal set covering 80% of the value — illiquid items excluded — and says
 how many positions and how much money stay in the tail.
 
+**You can go and sell straight from the card.** The item name links to its Steam Market
+listing, and every marketplace in the price list is a link too: Steam goes to the item page,
+the others to a search by name (their item URLs are built in their own way, with no guarantees).
+
 **Liquidity is shown separately.** Every position reports how many such items were sold on
 the Steam Market in the last 24 hours. A price without sales is not money: an item worth $15
 that nobody bought all day will not sell at that price. Those positions get their own
