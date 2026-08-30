@@ -38,11 +38,9 @@ irm https://raw.githubusercontent.com/XYphrodite/steam-inventory-value/main/inst
 & ([scriptblock]::Create((irm <тот же url>))) -Uninstall -Purge   # ещё и настройки с историей
 ```
 
-**Пока репозиторий приватный**, GitHub не отдаст ни скрипт по `raw`-ссылке, ни файлы релиза
-без авторизации. Установщик умеет брать токен из `gh auth token` или `GITHUB_TOKEN`, но сама
-`irm` до скрипта не дотянется — так что либо качать его через `gh`, либо сделать репозиторий
-публичным. Установщик написан по-английски и только ASCII: `.ps1` с кириллицей требует
-UTF-8 BOM для Windows PowerShell 5.1, а этот же BOM ломает `irm | iex`.
+Установщик написан по-английски и только ASCII: `.ps1` с кириллицей требует UTF-8 BOM для
+Windows PowerShell 5.1, а этот же BOM ломает `irm | iex`. Токен не нужен; если репозиторий
+когда-нибудь снова закроют, установщик подхватит его из `gh auth token` или `GITHUB_TOKEN`.
 
 Ставить можно и руками — архивы лежат на странице
 [Releases](https://github.com/XYphrodite/steam-inventory-value/releases):
@@ -62,9 +60,6 @@ UTF-8 BOM для Windows PowerShell 5.1, а этот же BOM ломает `irm 
 
 Удаление — удалить exe и, если не нужны настройки с историей, папку
 `%LOCALAPPDATA%\SteamInvValue`.
-
-Репозиторий приватный, поэтому ассеты релиза скачиваются только под своим аккаунтом:
-через браузер или `gh release download v0.1.0`.
 
 ## Сборка из исходников
 

@@ -40,12 +40,10 @@ Uninstalling uses the same script:
 & ([scriptblock]::Create((irm <same url>))) -Uninstall -Purge   # settings and history too
 ```
 
-**While the repository is private**, GitHub serves neither the raw script nor the release
-assets without authentication. The installer picks a token up from `gh auth token` or
-`GITHUB_TOKEN`, but `irm` itself cannot reach the script — so either fetch it with `gh` or
-make the repository public. The installer is written in English, ASCII only: a `.ps1` with
-Cyrillic text needs a UTF-8 BOM on Windows PowerShell 5.1, and that same BOM breaks
-`irm | iex`.
+The installer is written in English, ASCII only: a `.ps1` with Cyrillic text needs a UTF-8
+BOM on Windows PowerShell 5.1, and that same BOM breaks `irm | iex`. No token is needed; if
+the repository is ever made private again, the installer picks one up from `gh auth token`
+or `GITHUB_TOKEN`.
 
 Manual installation works too — the archives are on the
 [Releases](https://github.com/XYphrodite/steam-inventory-value/releases) page:
@@ -66,9 +64,6 @@ There is nothing to install; put it wherever you like, and add that folder to `P
 
 To uninstall, delete the exe and — if you do not want to keep the settings and history —
 the `%LOCALAPPDATA%\SteamInvValue` folder.
-
-The repository is private, so release assets are only downloadable while signed in: through
-the browser or with `gh release download v0.1.0`.
 
 ## Building from source
 
