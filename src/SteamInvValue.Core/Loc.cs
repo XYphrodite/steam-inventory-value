@@ -79,6 +79,9 @@ public static class S
         $"The game list came from probing {known} known inventories instead of the profile page ({why}). " +
         "Inventories of other games are missing from this report — re-run once Steam stops rate-limiting.");
 
+    public static string ContextsFromCache(int count) => Loc.Pick(
+        $"Список игр взят из кэша: {count}", $"Game list taken from cache: {count}");
+
     public static string FoundInventories(int count, string list) => Loc.Pick(
         $"Найдено инвентарей: {count} ({list})", $"Inventories found: {count} ({list})");
 

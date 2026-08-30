@@ -45,15 +45,30 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         var probed = false;
         string? why = null;
 
-        try
+        // Список игр кэшируется наравне с предметами: без этого каждый повторный прогон
+        // дёргал страницу профиля и упирался в лимит, хотя предметы уже лежали в кэше.
+        var ctxKey = $"ctxs_{profile.SteamId64}";
+        var cachedContexts = opt.InventoryCacheMinutes > 0
+            ? _cache.Get<List<InventoryContext>>(ctxKey, TimeSpan.FromMinutes(opt.InventoryCacheMinutes))
+            : null;
+
+        if (cachedContexts is { Count: > 0 })
         {
-            discovered = await inv.GetContextsAsync(profile.SteamId64, ct);
-            if (discovered.Count == 0) why = S.EmptyAppList;
+            _log(S.ContextsFromCache(cachedContexts.Count));
+            discovered = cachedContexts;
         }
-        catch (Exception ex)
+        else
         {
-            discovered = [];
-            why = ex.Message;
+            try
+            {
+                discovered = await inv.GetContextsAsync(profile.SteamId64, ct);
+                if (discovered.Count == 0) why = S.EmptyAppList;
+            }
+            catch (Exception ex)
+            {
+                discovered = [];
+                why = ex.Message;
+            }
         }
 
         if (discovered.Count == 0)
@@ -70,6 +85,9 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
 
         if (discovered.Count == 0)
             throw new InvalidOperationException(S.NothingFound);
+
+        if (cachedContexts is null && opt.InventoryCacheMinutes > 0)
+            _cache.Set(ctxKey, discovered.ToList());
 
         var contexts = discovered
             .Where(c => opt.OnlyApps is null || opt.OnlyApps.Contains(c.AppId))
