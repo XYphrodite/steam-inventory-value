@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>SteamInvValue.Web</RootNamespace>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- В CI подставляется из тега: -p:Version=0.2.0 -->
+    <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
   </PropertyGroup>
   <ItemGroup>
     <!-- Страница зашивается в сборку, иначе single-file exe остаётся без wwwroot. -->

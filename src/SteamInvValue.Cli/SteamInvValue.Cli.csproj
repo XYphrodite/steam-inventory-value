@@ -7,6 +7,8 @@
     <AssemblyName>steaminv</AssemblyName>
     <RootNamespace>SteamInvValue.Cli</RootNamespace>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- В CI подставляется из тега: -p:Version=0.2.0 -->
+    <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\SteamInvValue.Core\SteamInvValue.Core.csproj" />

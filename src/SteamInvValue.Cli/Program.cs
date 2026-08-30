@@ -18,9 +18,10 @@ int? budgetOpt = null, delayOpt = null, limitOpt = null;
 string? langOpt = null, proxyOpt = null, cookieOpt = null, uiOpt = null;
 var top = 20;
 
-var commands = new[] { "add", "rm", "remove", "list", "history", "config", "run", "all" };
+var commands = new[] { "add", "rm", "remove", "list", "history", "config", "run", "all", "update" };
 var helpRequested = false;
 var checkRequested = false;
+bool? updateCheckOpt = null;
 
 for (var i = 0; i < args.Length; i++)
 {
@@ -31,6 +32,9 @@ for (var i = 0; i < args.Length; i++)
     {
         case "-h" or "--help": helpRequested = true; break;
         case "--check": checkRequested = true; break;
+        case "-v" or "--version": Console.WriteLine(Updater.CurrentVersion); return 0;
+        case "--update-check": updateCheckOpt = true; break;
+        case "--no-update-check": updateCheckOpt = false; break;
         case "--ui": uiOpt = Next(); break;
         case "--config": configPath = Next(); break;
         case "--name": nameOpt = Next(); break;
@@ -83,15 +87,21 @@ Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
 
 try
 {
-    switch (command)
+    // Сама команда «update» проверку не запускает — она и так идёт за свежей версией.
+    if (command == "update") return Update();
+
+    var code = command switch
     {
-        case "add": return await Add();
-        case "rm" or "remove": return Remove();
-        case "list": return List();
-        case "history": return ShowHistory();
-        case "config": return ShowConfig();
-        default: return await Run();
-    }
+        "add" => await Add(),
+        "rm" or "remove" => Remove(),
+        "list" => List(),
+        "history" => ShowHistory(),
+        "config" => ShowConfig(),
+        _ => await Run(),
+    };
+
+    await ReportUpdateAsync();
+    return code;
 }
 catch (OperationCanceledException) { Console.Error.WriteLine(T.Cancelled); return 130; }
 catch (Exception ex) { Console.Error.WriteLine(T.Error(ex.Message)); return 1; }
@@ -289,6 +299,74 @@ async Task Export(Report report)
             ]));
         await File.WriteAllTextAsync(csvOut, sb.ToString(), Encoding.UTF8);
         Console.Error.WriteLine(T.CsvWritten(Path.GetFullPath(csvOut)));
+    }
+}
+
+// ---- обновления ---------------------------------------------------------------------------
+
+/// <summary>
+/// Проверка обновлений — сетевой запрос, которого пользователь не заказывал, поэтому один
+/// раз спрашиваем разрешение и запоминаем ответ в конфиге.
+/// </summary>
+async Task ReportUpdateAsync()
+{
+    var allowed = updateCheckOpt ?? config.CheckUpdates;
+
+    if (allowed is null)
+    {
+        // В неинтерактивном запуске (планировщик, пайп) спрашивать некого — молчим.
+        if (Console.IsInputRedirected || Console.IsOutputRedirected) return;
+
+        Console.Error.WriteLine();
+        Console.Error.Write(S.AskUpdates + " ");
+        var answer = (Console.ReadLine() ?? "").Trim().ToLowerInvariant();
+        allowed = answer.StartsWith('y') || answer.StartsWith('д');
+        config.CheckUpdates = allowed;
+        config.Save();
+        Console.Error.WriteLine(allowed.Value ? S.UpdatesOn : S.UpdatesOff);
+        if (!allowed.Value) return;
+    }
+
+    if (allowed != true) return;
+
+    try
+    {
+        var info = await Updater.CheckAsync(new FileCache(), cts.Token);
+        if (info?.IsNewer == true) Console.Error.WriteLine(S.UpdateAvailable(info.Latest, info.Current));
+    }
+    catch { /* обновление — не повод ломать прогон */ }
+}
+
+/// <summary>
+/// Запускает установщик отдельным процессом и выходит: работающий exe держит сам себя
+/// открытым, заменить его на месте Windows не даст.
+/// </summary>
+int Update()
+{
+    var dir = Updater.InstallDir;
+    var components = File.Exists(Path.Combine(dir, "SteamInvValue.Web.exe"))
+        ? (File.Exists(Path.Combine(dir, "steaminv.exe")) ? "both" : "web")
+        : "cli";
+
+    var command =
+        $"& ([scriptblock]::Create((irm {Updater.InstallScript}))) " +
+        $"-Path '{dir}' -Components {components} -Quiet";
+
+    Console.WriteLine(S.UpdateStarting(dir));
+    try
+    {
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            Arguments = $"-NoProfile -ExecutionPolicy Bypass -NoExit -Command \"{command}\"",
+            UseShellExecute = true,
+        });
+        return 0;
+    }
+    catch
+    {
+        Console.Error.WriteLine(S.UpdateNoPowerShell);
+        return 1;
     }
 }
 

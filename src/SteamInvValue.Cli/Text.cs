@@ -153,8 +153,12 @@ steaminv — оценка инвентарей Steam. Ссылки хранят�
   steaminv list                  что под наблюдением и на сколько
   steaminv history [ключ]        как менялась стоимость от запуска к запуску
   steaminv config                где лежит конфиг и что в нём
+  steaminv update                скачать и поставить свежий релиз
 
 Ключи:
+  -v, --version          версия программы
+  --update-check         проверить обновления в этот запуск
+  --no-update-check      не проверять
   --ui ru|en             язык интерфейса (то же: STEAMINV_UI, поле interfaceLanguage)
   --config ПУТЬ          другой файл конфига (то же: STEAMINV_CONFIG)
   --apps 730,753         ограничить играми на этот запуск
@@ -185,8 +189,12 @@ steaminv — Steam inventory valuation. Profile links live in the config and are
   steaminv list                  what is watched and what it is worth
   steaminv history [key]         how the value changed from run to run
   steaminv config                where the config lives and what is in it
+  steaminv update                download and install the latest release
 
 Options:
+  -v, --version          program version
+  --update-check         check for updates on this run
+  --no-update-check      do not check
   --ui ru|en             interface language (also: STEAMINV_UI, interfaceLanguage field)
   --config PATH          use a different config file (also: STEAMINV_CONFIG)
   --apps 730,753         restrict to these games for this run

@@ -33,6 +33,22 @@ The same can be set through `STEAMINV_INSTALL_DIR`, `STEAMINV_COMPONENTS` and
 `STEAMINV_VERSION`. Use `-NoPath` to leave `PATH` alone and `-Version v0.1.0` for a specific
 release.
 
+## Updating
+
+```powershell
+steaminv update
+```
+
+Downloads the latest release with the same installer and puts it over the old one. The program
+exits while that happens: a running exe holds itself open and Windows will not let the file be
+replaced in place.
+
+The app does not check for updates on its own — that is a request to api.github.com nobody
+asked for. The console **asks once** and remembers the answer in the `checkUpdates` field; the
+web UI stays quiet until you tick the box in Settings. Once allowed, the check hits the network
+at most once a day and the answer is cached. Per run: `--update-check` and `--no-update-check`.
+The current version: `steaminv --version`, and in the web header.
+
 Uninstalling uses the same script:
 
 ```powershell

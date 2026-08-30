@@ -15,6 +15,15 @@ var config = AppConfig.Load(configPath);
 var storage = new Storage();
 var jobs = new ConcurrentDictionary<string, Job>();
 
+// Проверка обновлений — сетевой запрос, поэтому только с явного разрешения в настройках.
+UpdateInfo? _update = null;
+async Task RefreshUpdateAsync()
+{
+    try { _update = await Updater.CheckAsync(new FileCache()); }
+    catch { _update = null; }
+}
+if (config.CheckUpdates == true) _ = RefreshUpdateAsync();
+
 var app = builder.Build();
 
 // Страница берётся с диска, если она рядом (удобно править при разработке), иначе из
@@ -74,9 +83,12 @@ object BuildState()
             config.Language,
             InterfaceLanguage = Loc.Lang,
             config.AutoRefreshMinutes,
+            CheckUpdates = config.CheckUpdates,
             HasProxy = Http.HasProxy,
             HasCookie = Http.HasCookie,
         },
+        Version = Updater.CurrentVersion,
+        Update = _update,
         ConfigPath = config.Path,
         Running = jobs.Values.Count(j => j.Status == "running"),
     };
@@ -154,6 +166,12 @@ app.MapPut("/api/settings", (SettingsRequest req) =>
     if (!string.IsNullOrWhiteSpace(req.Language)) config.Language = req.Language;
     if (!string.IsNullOrWhiteSpace(req.InterfaceLanguage)) config.InterfaceLanguage = req.InterfaceLanguage;
     if (req.AutoRefreshMinutes is not null) config.AutoRefreshMinutes = Math.Max(0, req.AutoRefreshMinutes.Value);
+    if (req.CheckUpdates is not null)
+    {
+        config.CheckUpdates = req.CheckUpdates.Value;
+        if (req.CheckUpdates.Value) _ = RefreshUpdateAsync();
+        else _update = null;
+    }
     if (req.Proxy is not null) config.Proxy = string.IsNullOrWhiteSpace(req.Proxy) ? null : req.Proxy;
     if (req.Cookie is not null) config.Cookie = string.IsNullOrWhiteSpace(req.Cookie) ? null : req.Cookie;
     config.Save();
@@ -217,6 +235,7 @@ var timer = new Timer(_ =>
 
 var url = Environment.GetEnvironmentVariable("STEAMINV_URL") ?? "http://localhost:5188";
 app.Urls.Add(url);
+Console.WriteLine($"SteamInvValue {Updater.CurrentVersion}");
 Console.WriteLine(Loc.Pick($"Конфиг: {config.Path}", $"Config: {config.Path}"));
 Console.WriteLine(Loc.Pick($"Инвентарей под наблюдением: {config.Profiles.Count}",
                            $"Inventories watched: {config.Profiles.Count}"));
@@ -228,7 +247,8 @@ sealed record AddRequest(string Profile, string? Name, int[]? Apps);
 
 sealed record SettingsRequest(
     bool? SteamEnabled, int? SteamBudget, int? SteamDelayMs,
-    string? Language, string? InterfaceLanguage, int? AutoRefreshMinutes, string? Proxy, string? Cookie);
+    string? Language, string? InterfaceLanguage, int? AutoRefreshMinutes, bool? CheckUpdates,
+    string? Proxy, string? Cookie);
 
 sealed class Job
 {

@@ -124,6 +124,33 @@ public static class S
         $"{items} шт ({positions} позиций) продать нельзя — ни обмена, ни маркета; в суммы не входят.",
         $"{items} items ({positions} positions) cannot be sold — no trading, no market; excluded from the totals.");
 
+    public static string AskUpdates => Loc.Pick(
+        "Проверять обновления при запуске? Это запрос к api.github.com не чаще раза в сутки. [д/н]",
+        "Check for updates on start? That is one request to api.github.com per day at most. [y/n]");
+
+    public static string UpdatesOn => Loc.Pick(
+        "Хорошо, буду проверять. Выключить: поле checkUpdates в конфиге или ключ --no-update-check.",
+        "Fine, I will check. To turn it off: the checkUpdates field in the config or --no-update-check.");
+
+    public static string UpdatesOff => Loc.Pick(
+        "Понял, не проверяю. Включить: поле checkUpdates в конфиге или ключ --update-check.",
+        "Understood, no checks. To enable: the checkUpdates field in the config or --update-check.");
+
+    public static string UpdateAvailable(string latest, string current) => Loc.Pick(
+        $"Доступна версия {latest}, у тебя {current}. Обновиться: steaminv update",
+        $"Version {latest} is available, you have {current}. Update with: steaminv update");
+
+    public static string UpToDate(string current) => Loc.Pick(
+        $"Версия {current} — обновлений нет.", $"Version {current} — no updates.");
+
+    public static string UpdateStarting(string dir) => Loc.Pick(
+        $"Запускаю установщик для {dir}. Программа сейчас закроется, чтобы освободить файл.",
+        $"Launching the installer for {dir}. This program will now exit so the file can be replaced.");
+
+    public static string UpdateNoPowerShell => Loc.Pick(
+        "Не нашёл powershell.exe — обнови вручную командой из README.",
+        "Could not find powershell.exe — update manually with the command from the README.");
+
     public static string ConfigUnreadable(string path, string error) => Loc.Pick(
         $"Конфиг {path} не читается: {error}", $"Config {path} could not be read: {error}");
 }

@@ -19,18 +19,23 @@ jobs:
         with:
           dotnet-version: '10.x'
 
+      # Версия берётся из тега: v0.2.0 -> 0.2.0, чтобы --version не врал.
+      - name: Version from tag
+        shell: pwsh
+        run: echo "VERSION=$($env:GITHUB_REF_NAME -replace '^v','')" >> $env:GITHUB_ENV
+
       # Self-contained single-file: на целевой машине .NET не нужен.
       - name: Publish CLI
         run: >
           dotnet publish src/SteamInvValue.Cli -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
-          -o out/cli
+          -p:Version=${{ env.VERSION }} -o out/cli
 
       - name: Publish Web
         run: >
           dotnet publish src/SteamInvValue.Web -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
-          -o out/web
+          -p:Version=${{ env.VERSION }} -o out/web
 
       # В архив кладём только exe: страница веб-морды зашита в сборку ресурсом.
       - name: Pack

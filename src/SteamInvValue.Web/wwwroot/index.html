@@ -72,6 +72,7 @@
   <h1 data-t="appTitle"></h1>
   <button id="refreshAll" data-t="refreshAll"></button>
   <button id="toggleSettings" data-t="settings"></button>
+  <div id="version" class="muted" style="font-size:12px"></div>
   <div class="total"><div class="v" id="totalRub">—</div><div class="s" id="totalUsd"></div></div>
 </div>
 
@@ -97,6 +98,7 @@
       <div class="field"><label data-t="uiLangLabel"></label>
         <select id="setUi"><option value="ru">Русский</option><option value="en">English</option></select></div>
       <div class="field"><label class="chk"><input type="checkbox" id="setSteam"> <span data-t="askSteam"></span></label></div>
+      <div class="field"><label class="chk"><input type="checkbox" id="setUpdates"> <span data-t="checkUpdates"></span></label></div>
       <div class="field"><label data-t="budgetLabel"></label><input type="text" id="setBudget"></div>
       <div class="field"><label data-t="delayLabel"></label><input type="text" id="setDelay"></div>
       <div class="field"><label data-t="autoLabel"></label><input type="text" id="setAuto"></div>
@@ -157,6 +159,8 @@ const I18N = {
     autoLabel: 'Автообновление, минут (0 — вручную)', itemLangLabel: 'Язык названий предметов',
     proxyLabel: 'Прокси (http:// или socks5://)', cookieLabel: 'Cookie steamLoginSecure',
     save: 'Сохранить', pickOne: 'Выбери инвентарь слева или добавь новый.',
+    checkUpdates: 'проверять обновления на GitHub',
+    updateNew: 'доступна ', updateHow: 'обновить: steaminv update',
     itemsTitle: 'Предметы', historyTitle: 'История стоимости', byMarketplace: 'По площадкам',
     byGame: 'По играм', notes: 'Замечания', searchLabel: 'Поиск', sortLabel: 'Сортировка',
     sortTotal: 'по стоимости', sortUnit: 'по цене за штуку', sortCount: 'по количеству', sortName: 'по названию',
@@ -194,6 +198,8 @@ const I18N = {
     autoLabel: 'Auto-refresh, minutes (0 — manual)', itemLangLabel: 'Item name language',
     proxyLabel: 'Proxy (http:// or socks5://)', cookieLabel: 'steamLoginSecure cookie',
     save: 'Save', pickOne: 'Pick an inventory on the left or add a new one.',
+    checkUpdates: 'check GitHub for updates',
+    updateNew: 'available: ', updateHow: 'update with: steaminv update',
     itemsTitle: 'Items', historyTitle: 'Value history', byMarketplace: 'By marketplace',
     byGame: 'By game', notes: 'Notes', searchLabel: 'Search', sortLabel: 'Sort',
     sortTotal: 'by value', sortUnit: 'by unit price', sortCount: 'by count', sortName: 'by name',
@@ -255,6 +261,12 @@ async function loadState() {
   el('totalRub').textContent = money(state.totalRub, 0) + ' ' + t('rub');
   el('totalUsd').textContent = money(state.totalUsd) + ' ' + t('totalAll');
   el('cfgPath').textContent = t('configAt') + state.configPath;
+
+  const up = state.update;
+  el('version').innerHTML = 'v' + state.version +
+    (up && up.isNewer
+      ? ' · <a href="' + up.url + '" target="_blank">' + t('updateNew') + up.latest + '</a> · ' + t('updateHow')
+      : '');
 
   if (!settingsLoaded) fillSettings();
 
@@ -497,6 +509,7 @@ function fillSettings() {
   const s = state.settings;
   el('setUi').value = s.interfaceLanguage || 'ru';
   el('setSteam').checked = s.enabled;
+  el('setUpdates').checked = s.checkUpdates === true;
   el('setBudget').value = s.budget;
   el('setDelay').value = s.delayMs;
   el('setAuto').value = s.autoRefreshMinutes;
@@ -510,6 +523,7 @@ el('saveSettings').onclick = async () => {
   const body = {
     interfaceLanguage: el('setUi').value,
     steamEnabled: el('setSteam').checked,
+    checkUpdates: el('setUpdates').checked,
     steamBudget: parseInt(el('setBudget').value) || 0,
     steamDelayMs: parseInt(el('setDelay').value) || 0,
     autoRefreshMinutes: parseInt(el('setAuto').value) || 0,

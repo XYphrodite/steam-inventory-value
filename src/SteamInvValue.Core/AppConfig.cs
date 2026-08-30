@@ -36,6 +36,11 @@ public sealed class AppConfig
     public string Language { get; set; } = "english";
     /// <summary>Язык интерфейса приложения: ru / en. Пусто — берётся язык системы.</summary>
     public string? InterfaceLanguage { get; set; }
+    /// <summary>
+    /// Проверять ли обновления на GitHub при запуске. null — разрешения ещё не спрашивали:
+    /// консоль спросит один раз, веб просто не будет проверять, пока не включат в настройках.
+    /// </summary>
+    public bool? CheckUpdates { get; set; }
     /// <summary>Автообновление в веб-режиме, минут. 0 — не обновлять само.</summary>
     public int AutoRefreshMinutes { get; set; }
     /// <summary>http://user:pass@host:port или socks5://host:port</summary>
