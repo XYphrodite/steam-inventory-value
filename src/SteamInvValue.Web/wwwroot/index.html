@@ -238,7 +238,9 @@ function render() {
     tile('Выгода против Steam', (diff >= 0 ? '+' : '') + money(diff, 1) + ' %',
          'по ' + r.steamCovered + ' из ' + r.pricedItems + ' позиций' + (partial ? ' · Steam опрошен не полностью' : '')) +
     tile('Предметов', r.totalItems + ' шт', r.uniqueItems + ' уникальных · с ценой ' + r.pricedItems + ', без цены ' + r.unpricedItems) +
-    tile('Ликвидность', r.tradableItems + ' шт торгуемых', r.marketableItems + ' шт продаваемых на маркете');
+    tile('Ликвидность', r.tradableItems + ' шт торгуемых', r.marketableItems + ' шт продаваемых на маркете') +
+    tile('Продать нельзя', (r.unsellableCount || 0) + ' шт',
+         (r.unsellablePositions || 0) + ' позиций без обмена и маркета · в суммы не входят');
 
   el('prov').innerHTML = '<table><tr><th>Площадка</th><th class="n">Ценник, $</th><th class="n">На руки, $</th><th class="n">На руки, ₽</th><th class="n">Позиций</th></tr>' +
     r.byProvider.map(p => '<tr><td>' + esc(p.provider) + '</td><td class="n">' + money(p.listUsd) + '</td><td class="n">' +
@@ -328,7 +330,7 @@ function renderItems(reset = true) {
       '<div class="pr">' + (best ? money(p.bestTotalUsd * report.usdRub, 0) + ' ₽' : '<span class="muted">нет цены</span>') + '</div>' +
       '<div class="q"><span>' + i.count + ' шт</span><span>' + (best ? money(best.payoutUsd) + ' $/шт' : '') + '</span></div>' +
       quotes +
-      '<div><span class="badge">' + (i.tradable ? 'tradable' : 'no trade') + '</span> ' +
+      '<div><span class="badge">' + (!i.tradable && !i.marketable ? 'не продать' : i.tradable ? 'tradable' : 'только маркет') + '</span> ' +
       (i.rarity ? '<span class="badge">' + esc(i.rarity) + '</span>' : '') + '</div>' +
     '</div>';
   }).join(''));

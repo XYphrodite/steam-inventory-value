@@ -29,6 +29,8 @@ public sealed partial class SteamMarketProvider(
     /// <summary>Комиссия Steam ~15% (5% Steam + 10% игре) — считаем от цены покупателя.</summary>
     public decimal PayoutRate => 1m / 1.15m;
     public bool Supports(int appId) => true;
+    /// <summary>Steam-маркету обмен не нужен, нужен признак marketable.</summary>
+    public bool CanSell(InventoryItem item) => item.Marketable;
 
     [GeneratedRegex(@"[\d.,]+")]
     private static partial Regex NumberPart();

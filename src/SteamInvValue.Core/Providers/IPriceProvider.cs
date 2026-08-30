@@ -15,6 +15,12 @@ public interface IPriceProvider
     bool Supports(int appId);
 
     /// <summary>
+    /// Можно ли реально продать этот предмет на площадке. Сторонним нужен обмен,
+    /// Steam-маркету — признак marketable. Непродаваемое в суммы не идёт.
+    /// </summary>
+    bool CanSell(InventoryItem item) => item.Tradable;
+
+    /// <summary>
     /// Возвращает цены для запрошенных имён. Массовые провайдеры игнорируют <paramref name="names"/>
     /// и отдают весь каталог; точечные (Steam) обходят имена по одному.
     /// </summary>

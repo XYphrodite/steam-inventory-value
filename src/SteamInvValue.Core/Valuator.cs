@@ -13,6 +13,10 @@ public sealed class ValuationOptions
     /// <summary>Пауза между запросами к Steam Market, мс.</summary>
     public int SteamDelayMs { get; set; } = 3500;
     public string Language { get; set; } = "english";
+    /// <summary>Считать ли стоимость того, что продать нельзя (нет обмена и маркета). По умолчанию нет.</summary>
+    public bool CountUnsellable { get; set; }
+    /// <summary>Сколько минут переиспользовать уже прочитанный инвентарь, не дёргая Steam. 0 — всегда заново.</summary>
+    public int InventoryCacheMinutes { get; set; } = 30;
 }
 
 public sealed class Valuator(FileCache? cache = null, Action<string>? log = null)
@@ -38,22 +42,34 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
 
         var inv = new SteamInventoryClient(_log);
         IReadOnlyList<InventoryContext> discovered;
+        var probed = false;
+        string? why = null;
+
         try
         {
             discovered = await inv.GetContextsAsync(profile.SteamId64, ct);
+            if (discovered.Count == 0) why = "страница профиля вернула пустой список";
         }
         catch (Exception ex)
         {
-            _log($"Страница профиля не отдала список инвентарей ({ex.Message}) — перебираю популярные игры.");
-            report.Notes.Add($"Список инвентарей взят перебором, а не со страницы профиля: {ex.Message}");
-            discovered = await inv.ProbeContextsAsync(profile.SteamId64, opt.OnlyApps, ct);
+            discovered = [];
+            why = ex.Message;
         }
 
         if (discovered.Count == 0)
         {
-            _log("Со страницы профиля ничего не пришло — перебираю популярные игры.");
+            _log($"Список игр со страницы профиля не получен ({why}) — перебираю известные игры.");
             discovered = await inv.ProbeContextsAsync(profile.SteamId64, opt.OnlyApps, ct);
+            probed = true;
         }
+
+        // Перебор знает только зашитый список игр, поэтому список инвентарей может быть неполным —
+        // это обязано быть видно в отчёте, а не только в логе.
+        if (probed)
+            report.Notes.Add(
+                $"Список игр получен перебором {KnownApps.Count} известных инвентарей, а не со страницы " +
+                $"профиля ({why}). Инвентари других игр в отчёт не попали — перезапусти, когда Steam " +
+                "перестанет ограничивать запросы.");
 
         if (discovered.Count == 0)
             throw new InvalidOperationException(
@@ -72,9 +88,23 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         foreach (var ctx in contexts)
         {
             appNames[ctx.AppId] = ctx.AppName;
+            var cacheKey = $"inv_{profile.SteamId64}_{ctx.AppId}_{ctx.ContextId}_{opt.Language}";
+            var cached = opt.InventoryCacheMinutes > 0
+                ? _cache.Get<List<InventoryItem>>(cacheKey, TimeSpan.FromMinutes(opt.InventoryCacheMinutes))
+                : null;
+
+            if (cached is { Count: > 0 })
+            {
+                _log($"  {ctx.AppName}: взят из кэша, {cached.Sum(i => i.Count)} шт");
+                all.AddRange(cached);
+                continue; // Steam не трогаем — именно из-за лимита 429 на /inventory/
+            }
+
             try
             {
-                all.AddRange(await inv.GetItemsAsync(profile.SteamId64, ctx, opt.Language, ct));
+                var items = await inv.GetItemsAsync(profile.SteamId64, ctx, opt.Language, ct);
+                if (items.Count > 0) _cache.Set(cacheKey, items);
+                all.AddRange(items);
             }
             catch (Exception ex)
             {
@@ -119,6 +149,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
                     foreach (var p in group)
                     {
                         if (p.Item.MarketHashName is null) continue;
+                        if (!opt.CountUnsellable && !provider.CanSell(p.Item)) continue;
                         if (!prices.TryGetValue(p.Item.MarketHashName, out var list) || list <= 0) continue;
                         p.Quotes.Add(new Quote(provider.Name,
                             Math.Round(list, 2),
@@ -143,6 +174,13 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
 
         report.PricedItems = priced.Count(p => p.Quotes.Count > 0);
         report.UnpricedItems = priced.Count - report.PricedItems;
+
+        var unsellable = priced.Where(p => !p.Item.Tradable && !p.Item.Marketable).ToList();
+        report.UnsellablePositions = unsellable.Count;
+        report.UnsellableCount = unsellable.Sum(p => p.Item.Count);
+        if (report.UnsellablePositions > 0 && !opt.CountUnsellable)
+            report.Notes.Add($"{report.UnsellableCount} шт ({report.UnsellablePositions} позиций) продать нельзя — " +
+                             "ни обмена, ни маркета; в суммы не входят.");
 
         report.BestSplit = fx.Convert(priced.Sum(p => p.BestTotalUsd));
         report.SteamNet = fx.Convert(priced.Sum(p => p.SteamTotalUsd));

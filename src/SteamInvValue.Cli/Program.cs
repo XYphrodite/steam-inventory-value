@@ -11,6 +11,8 @@ Console.OutputEncoding = Encoding.UTF8;
 string? command = null, target = null, jsonOut = null, csvOut = null, configPath = null, nameOpt = null;
 int[]? appsOpt = null;
 bool? useSteamOpt = null;
+var countUnsellable = false;
+int? invCacheMinutes = null;
 int? budgetOpt = null, delayOpt = null, limitOpt = null;
 string? langOpt = null, proxyOpt = null, cookieOpt = null;
 var top = 20;
@@ -30,6 +32,8 @@ for (var i = 0; i < args.Length; i++)
         case "--name": nameOpt = Next(); break;
         case "--apps": appsOpt = Next().Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray(); break;
         case "--no-steam": useSteamOpt = false; break;
+        case "--count-unsellable": countUnsellable = true; break;
+        case "--fresh": invCacheMinutes = 0; break;
         case "--steam": useSteamOpt = true; break;
         case "--steam-budget": budgetOpt = int.Parse(Next()); break;
         case "--steam-delay": delayOpt = int.Parse(Next()); break;
@@ -209,6 +213,8 @@ async Task<int> RunOne(TrackedProfile p, bool save,
     if (delayOpt is not null) opt.SteamDelayMs = delayOpt.Value;
     if (langOpt is not null) opt.Language = langOpt;
     if (appsOpt is not null) opt.OnlyApps = appsOpt;
+    opt.CountUnsellable = countUnsellable;
+    if (invCacheMinutes is not null) opt.InventoryCacheMinutes = invCacheMinutes.Value;
 
     Console.Error.WriteLine();
     Console.Error.WriteLine($"=== {p.Name} ===");
@@ -288,6 +294,8 @@ static void Print(Report r, int top)
     Console.WriteLine($"Предметов        : {r.TotalItems} шт ({r.UniqueItems} уникальных)");
     Console.WriteLine($"Торгуемых        : {r.TradableItems} шт, продаваемых на маркете: {r.MarketableItems} шт");
     Console.WriteLine($"С ценой          : {r.PricedItems} позиций, без цены: {r.UnpricedItems}");
+    if (r.UnsellableCount > 0)
+        Console.WriteLine($"Продать нельзя   : {r.UnsellableCount} шт ({r.UnsellablePositions} позиций) — в суммы не входят");
     Console.WriteLine();
     Console.WriteLine("СТОИМОСТЬ");
     Console.WriteLine($"  Steam, ценник   : {M(r.SteamGross)}");
@@ -399,6 +407,8 @@ steaminv — оценка инвентарей Steam. Ссылки хранят�
   --config ПУТЬ          другой файл конфига (то же: STEAMINV_CONFIG)
   --apps 730,753         ограничить играми на этот запуск
   --no-steam / --steam   спрашивать ли Steam Market
+  --count-unsellable     считать и то, что продать нельзя (по умолчанию не считается)
+  --fresh                перечитать инвентарь заново, не брать из кэша (кэш живёт 30 мин)
   --steam-budget N       сколько имён максимум спросить у Steam за запуск
   --steam-delay MS       пауза между запросами к Steam
   --lang russian         язык названий предметов

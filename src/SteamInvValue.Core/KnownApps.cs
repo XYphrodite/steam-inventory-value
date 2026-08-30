@@ -18,5 +18,13 @@ public static class KnownApps
         (322330, "Don't Starve Together", "2"),
         (291550, "Brawlhalla", "2"),
         (238460, "BattleBlock Theater", "2"),
+        (620, "Portal 2", "2"),
+        (250820, "SteamVR", "2"),
+        (2923300, "Banana", "2"),
+        (221100, "DayZ", "2"),
+        (346110, "ARK: Survival Evolved", "2"),
     ];
+
+    /// <summary>Сколько игр знает перебор — нужно, чтобы честно написать в отчёте, что список неполный.</summary>
+    public static int Count => All.Length;
 }

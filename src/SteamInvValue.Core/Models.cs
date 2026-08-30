@@ -57,6 +57,9 @@ public sealed class Report
     public int UniqueItems { get; set; }
     public int TradableItems { get; set; }
     public int MarketableItems { get; set; }
+    /// <summary>Позиции, которые нельзя продать вообще: без обмена и без маркета.</summary>
+    public int UnsellablePositions { get; set; }
+    public int UnsellableCount { get; set; }
     public int PricedItems { get; set; }
     public int UnpricedItems { get; set; }
 
