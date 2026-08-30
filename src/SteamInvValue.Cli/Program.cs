@@ -348,9 +348,14 @@ int Update()
         ? (File.Exists(Path.Combine(dir, "steaminv.exe")) ? "both" : "web")
         : "cli";
 
-    var command =
+    // Без -Quiet: путь и состав переданы, спрашивать установщику нечего, зато видно прогресс.
+    // Окно закрывается само, если всё прошло, и остаётся открытым с ошибкой, если нет.
+    var install =
         $"& ([scriptblock]::Create((irm {Updater.InstallScript}))) " +
-        $"-Path '{dir}' -Components {components} -Quiet";
+        $"-Path '{dir}' -Components {components}";
+    var command =
+        $"try {{ {install}; Start-Sleep -Seconds 2 }} " +
+        $"catch {{ Write-Host $_.Exception.Message -ForegroundColor Red; Read-Host 'Enter' }}";
 
     Console.WriteLine(S.UpdateStarting(dir));
     try
@@ -358,7 +363,7 @@ int Update()
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
             FileName = "powershell.exe",
-            Arguments = $"-NoProfile -ExecutionPolicy Bypass -NoExit -Command \"{command}\"",
+            Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
             UseShellExecute = true,
         });
         return 0;
