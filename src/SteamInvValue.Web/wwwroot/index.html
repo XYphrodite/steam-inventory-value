@@ -121,6 +121,13 @@
         <div id="who" class="muted" style="margin-bottom:11px"></div>
         <div class="tiles" id="tiles"></div>
       </div>
+      <div class="card hidden" id="planCard">
+        <h3 data-t="planTitle"></h3>
+        <div id="planSummary" class="muted" style="margin-bottom:9px"></div>
+        <div id="plan"></div>
+        <div id="planTail" class="muted" style="margin-top:9px"></div>
+      </div>
+
       <div class="card">
         <h3 data-t="itemsTitle"></h3>
         <div class="row" style="margin-bottom:11px">
@@ -136,6 +143,7 @@
           <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyPriced" checked> <span data-t="onlyPriced"></span></label></div>
           <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyTradable"> <span data-t="onlyTradable"></span></label></div>
           <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyNoSales"> <span data-t="onlyNoSales"></span></label></div>
+          <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyPlan"> <span data-t="onlyPlan"></span></label></div>
         </div>
         <div id="count" class="muted" style="margin-bottom:10px"></div>
         <div class="grid" id="items"></div>
@@ -183,6 +191,10 @@ const I18N = {
     tLiquidity: 'Ликвидность', tTradable: ' шт торгуемых', tLiquiditySub: ' шт продаваемых на маркете',
     tUnsellable: 'Продать нельзя', tUnsellableSub: ' позиций без обмена и маркета · в суммы не входят',
     tNoSales: 'Не продаётся', tNoSalesSub: ' позиций · за сутки на Steam ни одной продажи',
+    planTitle: 'Что продавать', onlyPlan: 'только план',
+    planSummary: (n, share, rub) => n + ' позиций дают ' + share + '% денег — это ' + rub + ' ₽',
+    planTail: (n, rub) => 'Остальные ' + n + ' позиций — ещё ' + rub + ' ₽, и это отдельный лот на каждую.',
+    colSum: 'Сумма, ₽', colSales: 'Продаж/сут',
     salesDay: ' прод./сут', noSales: 'нет продаж', onlyNoSales: 'только неликвид',
     colMarketplace: 'Площадка', colList: 'Ценник, $', colPayout: 'На руки, $', colPayoutRub: 'На руки, ₽',
     colPositions: 'Позиций', colGame: 'Игра', colItems: 'Предметов', colBest: 'Лучшая цена, $',
@@ -225,6 +237,10 @@ const I18N = {
     tLiquidity: 'Liquidity', tTradable: ' tradable', tLiquiditySub: ' marketable',
     tUnsellable: 'Cannot be sold', tUnsellableSub: ' positions with no trading and no market · excluded from totals',
     tNoSales: 'No buyers', tNoSalesSub: ' positions · zero Steam sales in 24 hours',
+    planTitle: 'What to sell', onlyPlan: 'plan only',
+    planSummary: (n, share, rub) => n + ' positions give ' + share + '% of the money — that is ' + rub + ' RUB',
+    planTail: (n, rub) => 'The other ' + n + ' positions add ' + rub + ' RUB, and that is one listing each.',
+    colSum: 'Sum, RUB', colSales: 'Sales/day',
     salesDay: ' sales/day', noSales: 'no sales', onlyNoSales: 'no-sale items only',
     colMarketplace: 'Marketplace', colList: 'List, $', colPayout: 'Payout, $', colPayoutRub: 'Payout, RUB',
     colPositions: 'Positions', colGame: 'Game', colItems: 'Items', colBest: 'Best price, $',
@@ -389,6 +405,21 @@ function render() {
     r.byApp.map(a => '<option value="' + a.appId + '">' + esc(a.appName) + ' (' + a.items + ')</option>').join('');
   if (chosen && r.byApp.some(a => String(a.appId) === chosen)) el('game').value = chosen;
 
+  const plan = r.items.filter(p => p.inSellPlan);
+  el('planCard').classList.toggle('hidden', plan.length === 0);
+  if (plan.length) {
+    el('planSummary').textContent = t('planSummary')(r.sellPlanPositions, money(r.sellPlanShare, 0),
+                                                     money((r.sellPlanValue || {rub: 0}).rub, 0));
+    el('plan').innerHTML = '<table><tr><th>' + t('colGame') + '</th><th></th><th class="n">' + t('colSum') +
+      '</th><th>' + t('colMarketplace') + '</th><th class="n">' + t('colSales') + '</th></tr>' +
+      plan.map(p => '<tr><td>' + esc(appName(p.item.appId)) + '</td><td>' +
+        esc(p.item.marketHashName || p.item.name) + '</td><td class="n">' +
+        money(p.bestTotalUsd * r.usdRub, 0) + '</td><td>' + esc(p.best.provider) + '</td><td class="n">' +
+        (p.steam ? (p.steamVolume || 0) : '—') + '</td></tr>').join('') + '</table>';
+    el('planTail').textContent = r.tailPositions > 0
+      ? t('planTail')(r.tailPositions, money((r.tailValue || {rub: 0}).rub, 0)) : '';
+  }
+
   el('notesCard').classList.toggle('hidden', !(r.notes && r.notes.length));
   if (r.notes && r.notes.length) el('notes').innerHTML = r.notes.map(n => '<li>' + esc(n) + '</li>').join('');
 
@@ -439,6 +470,7 @@ function filtered() {
     (!el('onlyPriced').checked || p.bestTotalUsd > 0) &&
     (!el('onlyTradable').checked || p.item.tradable) &&
     (!el('onlyNoSales').checked || (p.steam && !p.steamVolume)) &&
+    (!el('onlyPlan').checked || p.inSellPlan) &&
     (!game || String(p.item.appId) === game) &&
     (!q || (p.item.marketHashName || p.item.name).toLowerCase().includes(q)));
 
@@ -575,7 +607,7 @@ el('saveSettings').onclick = async () => {
 };
 
 el('more').onclick = () => renderItems(false);
-['q', 'sort', 'game', 'onlyPriced', 'onlyTradable', 'onlyNoSales'].forEach(id => el(id).addEventListener('input', () => report && renderItems()));
+['q', 'sort', 'game', 'onlyPriced', 'onlyTradable', 'onlyNoSales', 'onlyPlan'].forEach(id => el(id).addEventListener('input', () => report && renderItems()));
 el('newProfile').addEventListener('keydown', e => { if (e.key === 'Enter') el('add').click(); });
 
 applyStatic();

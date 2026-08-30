@@ -502,6 +502,16 @@ static void Print(Report r, int top)
             Console.WriteLine(T.SkippedNote(r.SteamSkipped));
     }
 
+    if (r.SellPlanPositions > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine(T.SellPlanHeader(r.SellPlanPositions, r.SellPlanShare));
+        foreach (var p in r.Items.Where(p => p.InSellPlan).Take(15))
+            Console.WriteLine($"  {Trim(p.Item.MarketHashName ?? p.Item.Name, 44),-44}" +
+                              $"{p.BestTotalUsd * r.UsdRub,9:N0} {Rub()}  {p.Best!.Provider,-12}{T.Sales(p)}");
+        if (r.TailPositions > 0) Console.WriteLine(T.SellPlanTail(r.TailPositions, r.TailValue.Rub));
+    }
+
     if (r.ByProvider.Count > 0)
     {
         Console.WriteLine();

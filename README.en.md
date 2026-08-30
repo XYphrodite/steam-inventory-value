@@ -175,6 +175,12 @@ dotnet run --project src/SteamInvValue.Cli -- nickname --json report.json --csv 
 Steam is kept apart from the rest on purpose: it pays into an internal wallet rather than in
 real money, and adding the two into one number would be lying to yourself.
 
+**There is an answer to "what should I sell".** A catalogue report says what everything is
+worth, but the decision looks different: usually a small share of positions carries almost all
+the money, and the rest is a long tail where every position needs its own listing. So the
+report computes the minimal set covering 80% of the value — illiquid items excluded — and says
+how many positions and how much money stay in the tail.
+
 **Liquidity is shown separately.** Every position reports how many such items were sold on
 the Steam Market in the last 24 hours. A price without sales is not money: an item worth $15
 that nobody bought all day will not sell at that price. Those positions get their own

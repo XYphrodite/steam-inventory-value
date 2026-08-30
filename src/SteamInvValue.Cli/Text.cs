@@ -116,6 +116,14 @@ public static class T
         $"                    Steam не опросил {skipped} имён (лимит) — «Кошелёк Steam» занижен, сравнивай по проценту выше.",
         $"                    Steam did not query {skipped} names (rate limit) — \"Steam wallet\" is understated, use the percentage above.");
 
+    public static string SellPlanHeader(int positions, decimal share) => P(
+        $"ЧТО ПРОДАВАТЬ — {positions} позиций дают {share:N0}% денег",
+        $"WHAT TO SELL — {positions} positions give {share:N0}% of the money");
+
+    public static string SellPlanTail(int positions, decimal rub) => P(
+        $"  остальные {positions} позиций — ещё {rub:N0} ₽, и это отдельный лот на каждую",
+        $"  the other {positions} positions add {rub:N0} RUB, and that is one listing each");
+
     public static string ProvidersHeader => P(
         "ПО ПЛОЩАДКАМ (если продать там всё, что площадка принимает)",
         "BY MARKETPLACE (selling everything the marketplace accepts)");

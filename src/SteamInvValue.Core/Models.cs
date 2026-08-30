@@ -49,6 +49,9 @@ public sealed class PricedItem
 
     /// <summary>Цена на Steam есть, а покупателей за сутки не было — продать будет нечем и некому.</summary>
     public bool NoSales => Steam is not null && SteamVolume == 0;
+
+    /// <summary>Позиция входит в минимальный набор, ради которого стоит возиться.</summary>
+    public bool InSellPlan { get; set; }
     /// <summary>Лучшее предложение среди тех, кто платит живыми деньгами.</summary>
     public Quote? BestCash => Quotes.Where(q => q.Provider != Marketplaces.Steam).MaxBy(q => q.PayoutUsd);
     public decimal BestTotalUsd => (Best?.PayoutUsd ?? 0m) * Item.Count;
@@ -88,6 +91,15 @@ public sealed class Report
     public Money BestCash { get; set; } = new(0, 0, 0, 0);
     /// <summary>Что нигде, кроме Steam, не продаётся.</summary>
     public Money SteamOnly { get; set; } = new(0, 0, 0, 0);
+    /// <summary>Сколько позиций достаточно продать, чтобы получить большую часть денег.</summary>
+    public int SellPlanPositions { get; set; }
+    public Money SellPlanValue { get; set; } = new(0, 0, 0, 0);
+    /// <summary>Их доля во всей сумме, процентов.</summary>
+    public decimal SellPlanShare { get; set; }
+    /// <summary>Сколько позиций останется в хвосте и сколько они стоят вместе.</summary>
+    public int TailPositions { get; set; }
+    public Money TailValue { get; set; } = new(0, 0, 0, 0);
+
     /// <summary>Позиции с ценой Steam, но без единой продажи за сутки.</summary>
     public int NoSalesPositions { get; set; }
     /// <summary>Сколько «стоит» этот неликвид по лучшей цене — цифра, которой не стоит верить.</summary>

@@ -262,7 +262,45 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
                 Math.Round(g.Sum(p => p.SteamTotalUsd), 2)));
         report.ByApp.Sort((a, b) => b.BestUsd.CompareTo(a.BestUsd));
 
+        BuildSellPlan(report, priced, fx);
+
         report.Items.AddRange(priced.OrderByDescending(p => p.BestTotalUsd));
         return report;
+    }
+
+    /// <summary>
+    /// Минимальный набор позиций, который даёт большую часть денег. Отчёт-каталог отвечает
+    /// «сколько стоит», а вопрос обычно другой — «что продавать»: в длинном хвосте по три
+    /// цента возни больше, чем выручки. Неликвид в план не берём: цена без покупателя не деньги.
+    /// </summary>
+    private static void BuildSellPlan(Report report, List<PricedItem> priced, CurrencyService fx)
+    {
+        const decimal targetShare = 0.80m;
+
+        // Steam-неликвид отбрасываем, только если больше его никто не берёт.
+        var candidates = priced
+            .Where(p => p.BestTotalUsd > 0 && !(p.NoSales && p.BestCash is null))
+            .OrderByDescending(p => p.BestTotalUsd)
+            .ToList();
+
+        var total = candidates.Sum(p => p.BestTotalUsd);
+        if (total <= 0) return;
+
+        decimal running = 0;
+        var plan = new List<PricedItem>();
+        foreach (var p in candidates)
+        {
+            plan.Add(p);
+            running += p.BestTotalUsd;
+            if (running >= total * targetShare) break;
+        }
+
+        foreach (var p in plan) p.InSellPlan = true;
+
+        report.SellPlanPositions = plan.Count;
+        report.SellPlanValue = fx.Convert(running);
+        report.SellPlanShare = Math.Round(running / total * 100, 1);
+        report.TailPositions = candidates.Count - plan.Count;
+        report.TailValue = fx.Convert(total - running);
     }
 }
