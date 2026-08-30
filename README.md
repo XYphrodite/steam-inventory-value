@@ -12,9 +12,32 @@ src/SteamInvValue.Cli    консоль: список, оценка, истор�
 src/SteamInvValue.Web    локальный сайт: список инвентарей, карточки предметов, график
 ```
 
-## Запуск
+## Установка
 
-Нужен .NET 10 SDK (уже стоит).
+Готовые сборки — на странице [Releases](https://github.com/XYphrodite/steam-inventory-value/releases):
+
+| Архив | Что внутри |
+|---|---|
+| `steaminv-cli-win-x64.zip` | `steaminv.exe` — консоль |
+| `steaminv-web-win-x64.zip` | `SteamInvValue.Web.exe` — локальный сайт |
+
+Сборки self-contained: .NET на машине не нужен, распаковал и запустил. Внутри по одному
+файлу — страница веб-морды зашита в сборку ресурсом. Ставить никуда не надо, положи куда
+удобно; чтобы вызывать `steaminv` из любой папки, добавь её каталог в `PATH`:
+
+```powershell
+[Environment]::SetEnvironmentVariable('PATH', $env:PATH + ';C:\Tools\steaminv', 'User')
+```
+
+Удаление — удалить exe и, если не нужны настройки с историей, папку
+`%LOCALAPPDATA%\SteamInvValue`.
+
+Репозиторий приватный, поэтому ассеты релиза скачиваются только под своим аккаунтом:
+через браузер или `gh release download v0.1.0`.
+
+## Сборка из исходников
+
+Нужен .NET 10 SDK.
 
 ```
 dotnet run --project src/SteamInvValue.Cli -- add https://steamcommunity.com/id/nickname
@@ -24,12 +47,16 @@ dotnet run --project src/SteamInvValue.Cli -- history         # как меня�
 dotnet run --project src/SteamInvValue.Cli -- --check         # живы ли источники цен
 ```
 
-Чтобы не писать `dotnet run` каждый раз, собери exe — он появится в `dist/steaminv.exe`:
+Чтобы получить такие же exe, как в релизе:
 
 ```
-dotnet publish src/SteamInvValue.Cli -c Release -o dist
-dist\steaminv.exe list
+dotnet publish src/SteamInvValue.Cli -c Release -r win-x64 --self-contained true ^
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out/cli
 ```
+
+Релиз собирается сам: `git tag v0.1.1 && git push --tags` запускает
+[workflow](.github/workflows/release.yml), который публикует обе сборки и прикрепляет
+архивы к релизу.
 
 Веб:
 

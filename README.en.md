@@ -12,7 +12,32 @@ src/SteamInvValue.Cli    console: list, valuation, history, JSON/CSV export
 src/SteamInvValue.Web    local site: inventory list, item cards, value chart
 ```
 
-## Running
+## Installation
+
+Prebuilt binaries live on the
+[Releases](https://github.com/XYphrodite/steam-inventory-value/releases) page:
+
+| Archive | What is inside |
+|---|---|
+| `steaminv-cli-win-x64.zip` | `steaminv.exe` — the console app |
+| `steaminv-web-win-x64.zip` | `SteamInvValue.Web.exe` — the local site |
+
+The builds are self-contained: no .NET needed on the machine, just unpack and run. Each
+archive holds a single file — the web page is embedded into the assembly as a resource.
+There is nothing to install; put it wherever you like, and add that folder to `PATH` to call
+`steaminv` from anywhere:
+
+```powershell
+[Environment]::SetEnvironmentVariable('PATH', $env:PATH + ';C:\Tools\steaminv', 'User')
+```
+
+To uninstall, delete the exe and — if you do not want to keep the settings and history —
+the `%LOCALAPPDATA%\SteamInvValue` folder.
+
+The repository is private, so release assets are only downloadable while signed in: through
+the browser or with `gh release download v0.1.0`.
+
+## Building from source
 
 Requires the .NET 10 SDK.
 
@@ -24,12 +49,16 @@ dotnet run --project src/SteamInvValue.Cli -- history         # how the value ch
 dotnet run --project src/SteamInvValue.Cli -- --check         # are the price sources alive
 ```
 
-To avoid typing `dotnet run` every time, publish an executable into `dist/steaminv.exe`:
+To produce the same executables as the release:
 
 ```
-dotnet publish src/SteamInvValue.Cli -c Release -o dist
-dist\steaminv.exe list
+dotnet publish src/SteamInvValue.Cli -c Release -r win-x64 --self-contained true ^
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out/cli
 ```
+
+Releases build themselves: `git tag v0.1.1 && git push --tags` triggers the
+[workflow](.github/workflows/release.yml), which publishes both builds and attaches the
+archives to the release.
 
 Web:
 

@@ -16,8 +16,23 @@ var storage = new Storage();
 var jobs = new ConcurrentDictionary<string, Job>();
 
 var app = builder.Build();
-app.UseDefaultFiles();
-app.UseStaticFiles();
+
+// Страница берётся с диска, если она рядом (удобно править при разработке), иначе из
+// ресурсов сборки — так single-file exe работает без папки wwwroot.
+var pageOnDisk = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html");
+var embeddedPage = File.Exists(pageOnDisk) ? null : ReadEmbeddedPage();
+
+app.MapGet("/", () => Results.Content(
+    embeddedPage ?? File.ReadAllText(pageOnDisk), "text/html; charset=utf-8"));
+
+static string ReadEmbeddedPage()
+{
+    var asm = System.Reflection.Assembly.GetExecutingAssembly();
+    using var stream = asm.GetManifestResourceStream("index.html")
+        ?? throw new InvalidOperationException("Страница index.html не найдена ни на диске, ни в ресурсах.");
+    using var reader = new StreamReader(stream);
+    return reader.ReadToEnd();
+}
 
 // ---- состояние ---------------------------------------------------------------------------
 

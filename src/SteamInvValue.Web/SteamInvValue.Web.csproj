@@ -7,6 +7,11 @@
     <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Страница зашивается в сборку, иначе single-file exe остаётся без wwwroot. -->
+    <EmbeddedResource Include="wwwroot\index.html" LogicalName="index.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SteamInvValue.Core\SteamInvValue.Core.csproj" />
   </ItemGroup>
 </Project>
