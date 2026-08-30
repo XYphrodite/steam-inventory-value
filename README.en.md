@@ -205,6 +205,11 @@ This is the main constraint on the whole idea:
 * Steam has no bulk price endpoint — one name per request, and it starts returning 429 after
   a few dozen requests in a row. Hence the defaults: a 3.5 s pause and at most 400 names per
   run (`--steam-budget`, `--steam-delay`), with exponential backoff on 429.
+* The pause tunes itself: the configured value is the starting point, it grows on every 429
+  and creeps back down after a streak of good answers, bounded between a third and one and a
+  half of the start. The value it lands on carries over to the next run. On a calm Steam this
+  saves about a quarter of the time; under constant 429s it is roughly a tenth slower than a
+  fixed pause — the backoff already paid for the refusal, and extra caution costs on top.
 * Whatever does not fit the budget is reported as "not queried". Run it again — the cache
   accumulates between runs and coverage grows.
 * The inventory endpoint is rate-limited per IP too, and on some networks (Russian ones in

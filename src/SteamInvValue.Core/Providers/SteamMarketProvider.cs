@@ -18,6 +18,36 @@ public sealed partial class SteamMarketProvider(
     private readonly Action<string> _log = log ?? (_ => { });
     private int _remaining = budget;
 
+    // Пауза подстраивается под настроение Steam: заданная в настройках — стартовая точка,
+    // границы считаются от неё, чтобы настройка пользователя оставалась осмысленной.
+    private readonly int _minDelay = Math.Max(800, delayMs / 3);
+    // Потолок невысокий: за 429 уже заплачено паузой backoff, задирать сверх этого — двойной штраф.
+    private readonly int _maxDelay = delayMs * 3 / 2;
+    private int _delay = delayMs;
+    private int _streak;
+    private bool _throttled;
+
+    /// <summary>Куда пауза пришла к концу опроса — видно в логе и переносится в следующий запуск.</summary>
+    public int CurrentDelayMs => _delay;
+
+    /// <summary>
+    /// Шаг подстройки: на 429 заметно тормозим, на серии удачных ответов ускоряемся мелкими
+    /// шагами. Числа подобраны на симуляции — быстрый разгон вниз даёт больше 429, чем экономит,
+    /// а высокий потолок наказывает дважды поверх backoff.
+    /// </summary>
+    public static int NextDelay(int current, bool throttled, ref int streak, int min, int max)
+    {
+        if (throttled)
+        {
+            streak = 0;
+            return Math.Min(max, current + 800);
+        }
+
+        if (++streak < 10) return current;
+        streak = 0;
+        return Math.Max(min, current - 100);
+    }
+
     /// <summary>Объём продаж за сутки по именам, заполняется попутно.</summary>
     public Dictionary<string, int> Volume { get; } = new(StringComparer.Ordinal);
 
@@ -57,7 +87,13 @@ public sealed partial class SteamMarketProvider(
         var toQuery = pending.Take(Math.Max(0, _remaining)).ToList();
         _remaining -= toQuery.Count;
         Skipped += pending.Count - toQuery.Count;
-        _log(S.SteamPlan(result.Count, toQuery.Count, Skipped, toQuery.Count * delayMs / 60000.0));
+        _log(S.SteamPlan(result.Count, toQuery.Count, Skipped, toQuery.Count * _delay / 60000.0));
+
+        // Начинаем с паузы, на которой закончился прошлый запуск: Steam ограничивает по IP,
+        // и его настроение живёт дольше одного прогона.
+        var learned = cache.Get<int?>("steam_delay", TimeSpan.FromHours(12));
+        if (learned is > 0) _delay = Math.Clamp(learned.Value, _minDelay, _maxDelay);
+        var startDelay = _delay;
 
         var consecutiveFailures = 0;
         var done = 0;
@@ -86,8 +122,15 @@ public sealed partial class SteamMarketProvider(
 
             done++;
             if (done % 25 == 0) _log(S.SteamProgress(done, toQuery.Count));
-            await Task.Delay(delayMs, ct);
+
+            _delay = NextDelay(_delay, _throttled, ref _streak, _minDelay, _maxDelay);
+            _throttled = false;
+
+            await Task.Delay(_delay, ct);
         }
+
+        cache.Set("steam_delay", _delay);
+        if (_delay != startDelay) _log(S.DelayTuned(startDelay, _delay));
 
         return result;
     }
@@ -104,6 +147,7 @@ public sealed partial class SteamMarketProvider(
             using var resp = await Http.Client.GetAsync(url, ct);
             if ((int)resp.StatusCode == 429)
             {
+                _throttled = true;
                 var wait = TimeSpan.FromSeconds(15 * Math.Pow(2, attempt));
                 _log(S.SteamThrottled(wait.TotalSeconds));
                 await Task.Delay(wait, ct);

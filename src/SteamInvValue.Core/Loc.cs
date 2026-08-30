@@ -119,6 +119,10 @@ public static class S
     public static string SteamProgress(int done, int total) => Loc.Pick(
         $"  Steam: {done}/{total}", $"  Steam: {done}/{total}");
 
+    public static string DelayTuned(int from, int to) => Loc.Pick(
+        $"  Steam: пауза подстроилась {from} → {to} мс",
+        $"  Steam: delay tuned {from} -> {to} ms");
+
     public static string SteamSkippedNote(int skipped) => Loc.Pick(
         $"Steam: {skipped} имён не опрошено (лимит запросов). Запусти ещё раз — кэш накопится и покрытие вырастет.",
         $"Steam: {skipped} names were not queried (rate limit). Run again — the cache grows and coverage improves.");
