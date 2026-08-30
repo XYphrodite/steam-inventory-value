@@ -59,7 +59,7 @@ public static class Updater
     }
 
     /// <summary>Сравнивает "v0.2.0" с "0.1.0"; на непонятных строках честно отвечает «не новее».</summary>
-    internal static bool IsNewer(string latestTag, string current)
+    public static bool IsNewer(string latestTag, string current)
     {
         static Version? Parse(string s)
         {
@@ -75,4 +75,78 @@ public static class Updater
     }
 
     private sealed record LatestRelease(string Tag, string Url);
+
+    /// <summary>Файл релиза: имя архива и ссылка на скачивание.</summary>
+    public sealed record ReleaseAsset(string Name, string Url, long Size);
+
+    /// <summary>Тег последнего релиза и его файлы — нужно для самообновления.</summary>
+    public static async Task<(string Tag, IReadOnlyList<ReleaseAsset> Assets)> GetLatestAsync(
+        CancellationToken ct = default)
+    {
+        var json = await Http.Client.GetStringAsync(
+            $"https://api.github.com/repos/{Repo}/releases/latest", ct);
+        using var doc = JsonDocument.Parse(json);
+
+        var tag = doc.RootElement.GetProperty("tag_name").GetString() ?? "";
+        var assets = new List<ReleaseAsset>();
+        foreach (var a in doc.RootElement.GetProperty("assets").EnumerateArray())
+            assets.Add(new ReleaseAsset(
+                a.GetProperty("name").GetString() ?? "",
+                a.GetProperty("browser_download_url").GetString() ?? "",
+                a.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0));
+
+        return (tag, assets);
+    }
+
+    /// <summary>Скачивает файл, сообщая о прогрессе (скачано, всего).</summary>
+    public static async Task DownloadAsync(string url, string destination,
+        Action<long, long>? progress = null, CancellationToken ct = default)
+    {
+        using var response = await Http.Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+
+        var total = response.Content.Headers.ContentLength ?? 0;
+        await using var input = await response.Content.ReadAsStreamAsync(ct);
+        await using var output = File.Create(destination);
+
+        var buffer = new byte[131072];
+        long done = 0;
+        int read;
+        while ((read = await input.ReadAsync(buffer, ct)) > 0)
+        {
+            await output.WriteAsync(buffer.AsMemory(0, read), ct);
+            done += read;
+            progress?.Invoke(done, total);
+        }
+    }
+
+    /// <summary>
+    /// Кладёт новый файл на место старого. Работающий exe перезаписать нельзя, но переименовать
+    /// можно — поэтому старый уезжает в .old и удаляется при следующем запуске.
+    /// </summary>
+    public static void ReplaceFile(string target, string fresh)
+    {
+        if (File.Exists(target))
+        {
+            var old = target + ".old";
+            if (File.Exists(old)) TryDelete(old);
+            File.Move(target, old);
+        }
+        File.Move(fresh, target);
+    }
+
+    /// <summary>Подчищает файлы, оставшиеся от прошлого обновления.</summary>
+    public static void CleanupOld()
+    {
+        try
+        {
+            foreach (var f in Directory.EnumerateFiles(InstallDir, "*.old")) TryDelete(f);
+        }
+        catch { /* не нашли и ладно */ }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { File.Delete(path); } catch { /* ещё занят — удалится в следующий раз */ }
+    }
 }

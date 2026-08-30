@@ -150,6 +150,31 @@ public static class S
     public static string UpToDate(string current) => Loc.Pick(
         $"Версия {current} — обновлений нет.", $"Version {current} — no updates.");
 
+    public static string UpdateLooking => Loc.Pick("Смотрю, что есть в релизах…", "Checking the releases…");
+
+    public static string UpdateAlready(string current) => Loc.Pick(
+        $"Уже последняя версия: {current}.", $"Already on the latest version: {current}.");
+
+    public static string UpdateFound(string from, string to) => Loc.Pick(
+        $"Обновляю {from} → {to}", $"Updating {from} -> {to}");
+
+    public static string UpdateDownloading(string name, double mb) => Loc.Pick(
+        $"  качаю {name} ({mb:N1} МБ)", $"  downloading {name} ({mb:N1} MB)");
+
+    public static string UpdateReplaced(string name) => Loc.Pick(
+        $"  заменено: {name}", $"  replaced: {name}");
+
+    public static string UpdateFinished(string version) => Loc.Pick(
+        $"Готово, версия {version}. Она заработает при следующем запуске.",
+        $"Done, version {version}. It takes effect the next time you start the program.");
+
+    public static string UpdateRestartWeb => Loc.Pick(
+        "Веб-морда запущена — перезапусти её, чтобы подхватила новую версию.",
+        "The web app is running — restart it to pick up the new version.");
+
+    public static string UpdateFailed(string error) => Loc.Pick(
+        $"Обновить не вышло: {error}", $"Update failed: {error}");
+
     public static string UpdateStarting(string dir) => Loc.Pick(
         $"Запускаю установщик для {dir}. Программа сейчас закроется, чтобы освободить файл.",
         $"Launching the installer for {dir}. This program will now exit so the file can be replaced.");

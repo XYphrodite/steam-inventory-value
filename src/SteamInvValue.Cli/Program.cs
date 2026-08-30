@@ -22,6 +22,7 @@ var commands = new[] { "add", "rm", "remove", "list", "history", "config", "run"
 var helpRequested = false;
 var checkRequested = false;
 bool? updateCheckOpt = null;
+long _lastProgressDraw = 0;
 
 for (var i = 0; i < args.Length; i++)
 {
@@ -82,13 +83,14 @@ if (proxyOpt is not null || cookieOpt is not null)
     Http.Configure(proxyOpt ?? config.Proxy, cookieOpt ?? config.Cookie);
 
 var storage = new Storage();
+Updater.CleanupOld();   // подчищаем файлы, оставшиеся от прошлого обновления
 var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
 
 try
 {
     // Сама команда «update» проверку не запускает — она и так идёт за свежей версией.
-    if (command == "update") return Update();
+    if (command == "update") return await UpdateAsync();
 
     var code = command switch
     {
@@ -338,41 +340,95 @@ async Task ReportUpdateAsync()
 }
 
 /// <summary>
-/// Запускает установщик отдельным процессом и выходит: работающий exe держит сам себя
-/// открытым, заменить его на месте Windows не даст.
+/// Обновляет себя сам, без сторонних процессов и лишних окон. Работающий exe нельзя
+/// перезаписать, но можно переименовать — старый уезжает в .old и удаляется при следующем
+/// запуске. Поэтому ничего закрывать не нужно: программа доживает своё, а на её месте уже
+/// лежит новая версия.
 /// </summary>
-int Update()
+async Task<int> UpdateAsync()
 {
     var dir = Updater.InstallDir;
-    var components = File.Exists(Path.Combine(dir, "SteamInvValue.Web.exe"))
-        ? (File.Exists(Path.Combine(dir, "steaminv.exe")) ? "both" : "web")
-        : "cli";
 
-    // Без -Quiet: путь и состав переданы, спрашивать установщику нечего, зато видно прогресс.
-    // Окно закрывается само, если всё прошло, и остаётся открытым с ошибкой, если нет.
-    var install =
-        $"& ([scriptblock]::Create((irm {Updater.InstallScript}))) " +
-        $"-Path '{dir}' -Components {components}";
-    var command =
-        $"try {{ {install}; Start-Sleep -Seconds 2 }} " +
-        $"catch {{ Write-Host $_.Exception.Message -ForegroundColor Red; Read-Host 'Enter' }}";
-
-    Console.WriteLine(S.UpdateStarting(dir));
     try
     {
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        Console.WriteLine(S.UpdateLooking);
+        var (tag, assets) = await Updater.GetLatestAsync(cts.Token);
+
+        if (!Updater.IsNewer(tag, Updater.CurrentVersion))
         {
-            FileName = "powershell.exe",
-            Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
-            UseShellExecute = true,
-        });
+            Console.WriteLine(S.UpdateAlready(Updater.CurrentVersion));
+            return 0;
+        }
+
+        Console.WriteLine(S.UpdateFound(Updater.CurrentVersion, tag));
+
+        // Обновляем ровно то, что установлено рядом.
+        var targets = new List<(string Exe, string Asset)>();
+        if (File.Exists(Path.Combine(dir, "steaminv.exe")))
+            targets.Add(("steaminv.exe", "steaminv-cli-win-x64.zip"));
+        if (File.Exists(Path.Combine(dir, "SteamInvValue.Web.exe")))
+            targets.Add(("SteamInvValue.Web.exe", "steaminv-web-win-x64.zip"));
+        if (targets.Count == 0) targets.Add(("steaminv.exe", "steaminv-cli-win-x64.zip"));
+
+        var temp = Path.Combine(Path.GetTempPath(), "steaminv-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(temp);
+
+        try
+        {
+            foreach (var (exe, assetName) in targets)
+            {
+                var asset = assets.FirstOrDefault(a => a.Name == assetName)
+                            ?? throw new InvalidOperationException($"{assetName}: нет в релизе {tag}");
+
+                Console.WriteLine(S.UpdateDownloading(asset.Name, asset.Size / 1024.0 / 1024.0));
+
+                var zip = Path.Combine(temp, asset.Name);
+                await Updater.DownloadAsync(asset.Url, zip, ShowProgress, cts.Token);
+                ClearProgress();
+
+                var unpacked = Path.Combine(temp, Path.GetFileNameWithoutExtension(asset.Name));
+                System.IO.Compression.ZipFile.ExtractToDirectory(zip, unpacked, overwriteFiles: true);
+
+                Updater.ReplaceFile(Path.Combine(dir, exe), Path.Combine(unpacked, exe));
+                Console.WriteLine(S.UpdateReplaced(exe));
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(temp, recursive: true); } catch { /* временное, переживём */ }
+        }
+
+        Console.WriteLine(S.UpdateFinished(tag));
+
+        var webRunning = System.Diagnostics.Process.GetProcessesByName("SteamInvValue.Web").Length > 0;
+        if (webRunning) Console.WriteLine(S.UpdateRestartWeb);
+
         return 0;
     }
-    catch
+    catch (OperationCanceledException) { throw; }
+    catch (Exception ex)
     {
-        Console.Error.WriteLine(S.UpdateNoPowerShell);
+        Console.Error.WriteLine(S.UpdateFailed(ex.Message));
         return 1;
     }
+}
+
+/// <summary>Однострочный прогресс скачивания; в перенаправленный вывод не пишется.</summary>
+void ShowProgress(long done, long total)
+{
+    if (Console.IsOutputRedirected || total <= 0) return;
+    if (Environment.TickCount64 - _lastProgressDraw < 150 && done < total) return;
+    _lastProgressDraw = Environment.TickCount64;
+
+    var percent = (int)(100 * done / total);
+    var bar = new string('#', percent / 5).PadRight(20, '.');
+    Console.Write($"\r  [{bar}] {percent,3}%  {done / 1024.0 / 1024.0,5:N1} / {total / 1024.0 / 1024.0:N1} MB");
+}
+
+void ClearProgress()
+{
+    if (Console.IsOutputRedirected) return;
+    Console.Write("\r" + new string(' ', 60) + "\r");
 }
 
 // ---- вывод -------------------------------------------------------------------------------
