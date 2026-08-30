@@ -24,6 +24,13 @@ dotnet run --project src/SteamInvValue.Cli -- history         # how the value ch
 dotnet run --project src/SteamInvValue.Cli -- --check         # are the price sources alive
 ```
 
+To avoid typing `dotnet run` every time, publish an executable into `dist/steaminv.exe`:
+
+```
+dotnet publish src/SteamInvValue.Cli -c Release -o dist
+dist\steaminv.exe list
+```
+
 Web:
 
 ```
@@ -49,6 +56,7 @@ the `--config` flag or the `STEAMINV_CONFIG` environment variable.
   ],
   "steam": { "enabled": true, "budget": 400, "delayMs": 3500 },
   "language": "english",
+  "interfaceLanguage": "en",
   "autoRefreshMinutes": 0,
   "proxy": null,
   "cookie": null
@@ -59,6 +67,9 @@ the `--config` flag or the `STEAMINV_CONFIG` environment variable.
   automatically by `add`.
 * `apps` — restrict to these games; `null` or empty means every inventory on the profile.
 * `enabled: false` — skip during a bulk run without losing the history.
+* `language` — the language of item names requested from Steam (`english` / `russian`).
+* `interfaceLanguage` — the language of the app itself, `ru` or `en`; empty means the system
+  language. Overridden by `--ui` and `STEAMINV_UI`, and changed in the web Settings panel.
 * `autoRefreshMinutes` — in web mode, re-value the inventories no more often than this;
   `0` means manual only.
 
@@ -79,10 +90,19 @@ dotnet run --project src/SteamInvValue.Cli -- nickname --json report.json --csv 
 
 | Number | Meaning |
 |---|---|
-| **Steam, list price** | sum of `lowest_price` — what a buyer pays on the Steam Market |
-| **Steam, net** | minus the 15% fee; the money stays in the Steam wallet and cannot be withdrawn |
-| **Best marketplace** | every item priced at whichever marketplace pays the most, after its fee — this is real money |
+| **Real money** | third-party marketplaces only; each item priced at whichever one pays the most, after its fee |
+| **Steam wallet** | everything sold on the Steam Market, minus the 15% fee. This is an internal balance and cannot be withdrawn |
+| **Steam list price** | sum of `lowest_price` — what a buyer pays, before the fee |
+| **Maximum overall** | the best of every marketplace at once. It mixes cash and wallet money, so the split is printed underneath |
 | **Per marketplace** | what you get if you sell everything a given marketplace accepts there |
+
+Steam is kept apart from the rest on purpose: it pays into an internal wallet rather than in
+real money, and adding the two into one number would be lying to yourself.
+
+**Unsellable items are not counted.** A price only counts if the marketplace would actually
+take the item: third parties need `tradable`, the Steam Market needs `marketable`. Whatever
+qualifies for neither is reported on its own "cannot be sold" line and stays out of the
+totals. Pass `--count-unsellable` for the old behaviour.
 
 Seller fees are hard-coded per provider (`PayoutRate`): Steam 15%, Skinport ~12%,
 Waxpeer ~6%, Market.CSGO ~5%. Each one is edited in a single place — its provider class.
@@ -96,8 +116,14 @@ Waxpeer ~6%, Market.CSGO ~5%. Each one is edited in a single place — its provi
 | Waxpeer | 730, 570, 440, 252490 | same |
 | Market.CSGO | 730 | same |
 
-Marketplace price lists are cached for 30 minutes and individual Steam prices for 12 hours,
-under `%LOCALAPPDATA%\SteamInvValue\cache`.
+Cached under `%LOCALAPPDATA%\SteamInvValue\cache`: marketplace price lists for 30 minutes,
+individual Steam prices for 12 hours, and the inventory itself for 30 minutes. That last one
+matters: without it every repeated run would re-read the inventory and hit the Steam rate
+limit. Force a re-read with `--fresh`.
+
+Prices are only requested for what a marketplace would accept. On a large inventory that is
+a several-fold difference: 116 Steam requests instead of 1028, because the rest is
+untradable anyway.
 
 ## About Steam rate limits
 
@@ -117,8 +143,8 @@ This is the main constraint on the whole idea:
   --proxy  http://user:pass@host:port               # or socks5://host:port
   ```
 
-  The same values are read from `STEAMINV_COOKIE` and `STEAMINV_PROXY` — the web UI only
-  takes them from there. Grab the `steamLoginSecure` cookie in DevTools → Application →
+  The same values are read from `STEAMINV_COOKIE` and `STEAMINV_PROXY`, and in the web UI
+  they are set in the Settings panel and saved to the config. Grab the `steamLoginSecure` cookie in DevTools → Application →
   Cookies → steamcommunity.com; it is full access to the account, so never show it to anyone.
 * For CS2 skins the third-party marketplaces are faster and more complete: `--no-steam`
   returns in seconds. Steam is mostly needed for trading cards and anything that is not CS.
