@@ -69,6 +69,65 @@ function Get-AuthHeaders([string]$tok, [string]$accept) {
     return $h
 }
 
+# Own downloader with a progress line. Invoke-WebRequest draws a progress bar that slows
+# PowerShell 5.1 downloads down several times over, so it is off and this draws instead.
+function Get-Download([string]$url, [string]$dest, [string]$tok) {
+    $request = [System.Net.HttpWebRequest]::Create($url)
+    $request.UserAgent = 'steaminv-installer'
+    $request.Accept = 'application/octet-stream'
+    # Follow redirects by hand: GitHub sends the asset to a storage host that rejects
+    # requests carrying our Authorization header.
+    $request.AllowAutoRedirect = $false
+    if ($tok) { $request.Headers.Add('Authorization', "Bearer $tok") }
+
+    $response = $request.GetResponse()
+    if ([int]$response.StatusCode -ge 300 -and [int]$response.StatusCode -lt 400) {
+        $location = $response.Headers['Location']
+        $response.Close()
+        $request = [System.Net.HttpWebRequest]::Create($location)
+        $request.UserAgent = 'steaminv-installer'
+        $response = $request.GetResponse()
+    }
+
+    $total = $response.ContentLength
+    $quiet = [Console]::IsOutputRedirected -or $Quiet
+    $input = $response.GetResponseStream()
+    $output = [IO.File]::Create($dest)
+    $buffer = New-Object byte[] 131072
+    $done = 0L
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $lastDraw = -1000
+
+    try {
+        while (($read = $input.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $output.Write($buffer, 0, $read)
+            $done += $read
+
+            if (-not $quiet -and ($clock.ElapsedMilliseconds - $lastDraw) -ge 150) {
+                $lastDraw = $clock.ElapsedMilliseconds
+                $speed = if ($clock.Elapsed.TotalSeconds -gt 0) { $done / 1MB / $clock.Elapsed.TotalSeconds } else { 0 }
+                if ($total -gt 0) {
+                    $percent = [int](100 * $done / $total)
+                    $bar = ('#' * [int]($percent / 5)).PadRight(20, '.')
+                    Write-Host -NoNewline ("`r  [{0}] {1,3}%  {2,5:N1} / {3:N1} MB  {4,5:N1} MB/s" -f `
+                        $bar, $percent, ($done / 1MB), ($total / 1MB), $speed)
+                } else {
+                    Write-Host -NoNewline ("`r  {0,6:N1} MB  {1,5:N1} MB/s" -f ($done / 1MB), $speed)
+                }
+            }
+        }
+    } finally {
+        $output.Close()
+        $input.Close()
+        $response.Close()
+    }
+
+    if (-not $quiet) {
+        $seconds = [math]::Max($clock.Elapsed.TotalSeconds, 0.1)
+        Write-Host ("`r  [{0}] 100%  {1,5:N1} / {1:N1} MB  {2,5:N1} MB/s" -f ('#' * 20), ($done / 1MB), ($done / 1MB / $seconds))
+    }
+}
+
 function Stop-Running([string]$dir) {
     Get-Process -Name 'steaminv', 'SteamInvValue.Web' -ErrorAction SilentlyContinue |
         Where-Object { $_.Path -and $_.Path.StartsWith($dir, 'OrdinalIgnoreCase') } |
@@ -174,14 +233,7 @@ try {
         Say "  downloading $($item.Asset) ($mb MB)"
 
         # Assets of a private repository are only served from the API url with this Accept.
-        $progress = $ProgressPreference
-        $ProgressPreference = 'SilentlyContinue'
-        try {
-            Invoke-WebRequest -Uri $asset.url -Headers (Get-AuthHeaders $tok 'application/octet-stream') `
-                -OutFile $zip -UseBasicParsing
-        } finally {
-            $ProgressPreference = $progress
-        }
+        Get-Download $asset.url $zip $tok
 
         Expand-Archive -Path $zip -DestinationPath $dir -Force
         Say "  installed $($item.Exe)"
