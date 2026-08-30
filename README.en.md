@@ -167,7 +167,7 @@ dotnet run --project src/SteamInvValue.Cli -- nickname --json report.json --csv 
 | Number | Meaning |
 |---|---|
 | **Real money** | third-party marketplaces only; each item priced at whichever one pays the most, after its fee |
-| **Steam wallet** | everything sold on the Steam Market, minus the 15% fee. This is an internal balance and cannot be withdrawn |
+| **Steam wallet** | everything sold on the Steam Market, minus its fee. This is an internal balance and cannot be withdrawn |
 | **Steam list price** | sum of `lowest_price` — what a buyer pays, before the fee |
 | **Maximum overall** | the best of every marketplace at once. It mixes cash and wallet money, so the split is printed underneath |
 | **Per marketplace** | what you get if you sell everything a given marketplace accepts there |
@@ -185,8 +185,12 @@ take the item: third parties need `tradable`, the Steam Market needs `marketable
 qualifies for neither is reported on its own "cannot be sold" line and stays out of the
 totals. Pass `--count-unsellable` for the old behaviour.
 
-Seller fees are hard-coded per provider (`PayoutRate`): Steam 15%, Skinport ~12%,
-Waxpeer ~6%, Market.CSGO ~5%. Each one is edited in a single place — its provider class.
+Third-party seller fees are hard-coded per provider (`PayoutRate`): Skinport ~12%,
+Waxpeer ~6%, Market.CSGO ~5%. The Steam fee is computed exactly
+([SteamFee.cs](src/SteamInvValue.Core/SteamFee.cs)): Steam charges two fees, 5% for itself and
+10% for the publisher, and **each has a one-cent minimum**. A flat "minus 15%" is therefore
+only right for expensive items: a $0.03 sale pays the seller $0.01, a third of it gone. On an
+inventory full of trading cards the difference is real.
 
 ## Price sources
 

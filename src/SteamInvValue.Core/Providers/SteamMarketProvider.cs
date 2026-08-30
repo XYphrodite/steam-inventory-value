@@ -59,8 +59,11 @@ public sealed partial class SteamMarketProvider(
 
     public string Name => "Steam";
     public string Site => "https://steamcommunity.com/market";
-    /// <summary>Комиссия Steam ~15% (5% Steam + 10% игре) — считаем от цены покупателя.</summary>
+    /// <summary>Ориентир для дорогих предметов; точный расчёт — в <see cref="Payout"/>.</summary>
     public decimal PayoutRate => 1m / 1.15m;
+
+    /// <summary>Точная выплата Steam: две комиссии с минимумом в цент каждая.</summary>
+    public decimal Payout(decimal listUsd) => SteamFee.Net(listUsd);
     public bool Supports(int appId) => true;
     /// <summary>Steam-маркету обмен не нужен, нужен признак marketable.</summary>
     public bool CanSell(InventoryItem item) => item.Marketable;

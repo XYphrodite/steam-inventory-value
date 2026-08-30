@@ -171,7 +171,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
                         if (!prices.TryGetValue(p.Item.MarketHashName, out var list) || list <= 0) continue;
                         p.Quotes.Add(new Quote(provider.Name,
                             Math.Round(list, 2),
-                            Math.Round(list * provider.PayoutRate, 2)));
+                            Math.Round(provider.Payout(list), 2)));
                     }
                 }
                 catch (Exception ex)

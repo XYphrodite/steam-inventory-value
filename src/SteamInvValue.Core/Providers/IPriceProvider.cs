@@ -9,6 +9,12 @@ public interface IPriceProvider
     /// <summary>Доля цены листинга, которая реально доходит до продавца (комиссия площадки).</summary>
     decimal PayoutRate { get; }
 
+    /// <summary>
+    /// Сколько получит продавец с этой цены. По умолчанию — простой процент; Steam считает
+    /// иначе, у него минимальные комиссии в один цент бьют по дешёвым предметам.
+    /// </summary>
+    decimal Payout(decimal listUsd) => listUsd * PayoutRate;
+
     /// <summary>Ссылка на площадку — для отчёта.</summary>
     string Site { get; }
 

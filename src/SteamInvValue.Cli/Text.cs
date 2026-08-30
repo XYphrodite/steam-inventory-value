@@ -97,8 +97,8 @@ public static class T
         "   (third-party marketplaces only, best price per item)");
     public static string WalletRow => P("  Кошелёк Steam   : ", "  Steam wallet    : ");
     public static string WalletNote => P(
-        "   (весь инвентарь на Steam-маркете, минус 15%; вывести нельзя)",
-        "   (everything sold on the Steam Market, minus 15%; cannot be withdrawn)");
+        "   (весь инвентарь на Steam-маркете за вычетом его комиссии; вывести нельзя)",
+        "   (everything sold on the Steam Market, minus its fee; cannot be withdrawn)");
     public static string GrossRow => P("  Steam, ценник   : ", "  Steam list price: ");
     public static string GrossNote => P(
         "   (столько платит покупатель, до комиссии)", "   (what the buyer pays, before the fee)");
