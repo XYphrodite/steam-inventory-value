@@ -130,7 +130,9 @@
             <option value="unit" data-t="sortUnit"></option>
             <option value="count" data-t="sortCount"></option>
             <option value="name" data-t="sortName"></option>
+            <option value="game" data-t="sortGame"></option>
           </select></div>
+          <div><label data-t="gameLabel"></label><select id="game"></select></div>
           <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyPriced" checked> <span data-t="onlyPriced"></span></label></div>
           <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyTradable"> <span data-t="onlyTradable"></span></label></div>
         </div>
@@ -164,6 +166,7 @@ const I18N = {
     itemsTitle: 'Предметы', historyTitle: 'История стоимости', byMarketplace: 'По площадкам',
     byGame: 'По играм', notes: 'Замечания', searchLabel: 'Поиск', sortLabel: 'Сортировка',
     sortTotal: 'по стоимости', sortUnit: 'по цене за штуку', sortCount: 'по количеству', sortName: 'по названию',
+    sortGame: 'по играм', gameLabel: 'Игра', allGamesOption: 'все игры',
     onlyPriced: 'только с ценой', onlyTradable: 'только торгуемые', showMore: 'Показать ещё',
     rub: '₽', pcs: 'шт', of: 'из',
     totalAll: '$ по всем инвентарям', configAt: 'Конфиг: ', allGames: 'все игры',
@@ -203,6 +206,7 @@ const I18N = {
     itemsTitle: 'Items', historyTitle: 'Value history', byMarketplace: 'By marketplace',
     byGame: 'By game', notes: 'Notes', searchLabel: 'Search', sortLabel: 'Sort',
     sortTotal: 'by value', sortUnit: 'by unit price', sortCount: 'by count', sortName: 'by name',
+    sortGame: 'by game', gameLabel: 'Game', allGamesOption: 'all games',
     onlyPriced: 'priced only', onlyTradable: 'tradable only', showMore: 'Show more',
     rub: 'RUB', pcs: 'pcs', of: 'of',
     totalAll: '$ across all inventories', configAt: 'Config: ', allGames: 'all games',
@@ -372,6 +376,12 @@ function render() {
     r.byApp.map(a => '<tr><td>' + esc(a.appName) + '</td><td class="n">' + a.items + '</td><td class="n">' + money(a.bestUsd) +
       '</td><td class="n">' + money(a.steamUsd) + '</td><td class="n">' + money(a.bestUsd * r.usdRub, 0) + '</td></tr>').join('') + '</table>';
 
+  // Список игр для фильтра: порядок как в таблице «по играм», то есть по стоимости.
+  const chosen = el('game').value;
+  el('game').innerHTML = '<option value="">' + t('allGamesOption') + '</option>' +
+    r.byApp.map(a => '<option value="' + a.appId + '">' + esc(a.appName) + ' (' + a.items + ')</option>').join('');
+  if (chosen && r.byApp.some(a => String(a.appId) === chosen)) el('game').value = chosen;
+
   el('notesCard').classList.toggle('hidden', !(r.notes && r.notes.length));
   if (r.notes && r.notes.length) el('notes').innerHTML = r.notes.map(n => '<li>' + esc(n) + '</li>').join('');
 
@@ -417,20 +427,35 @@ async function renderHistory(id) {
 
 function filtered() {
   const q = el('q').value.trim().toLowerCase();
+  const game = el('game').value;
   const list = report.items.filter(p =>
     (!el('onlyPriced').checked || p.bestTotalUsd > 0) &&
     (!el('onlyTradable').checked || p.item.tradable) &&
+    (!game || String(p.item.appId) === game) &&
     (!q || (p.item.marketHashName || p.item.name).toLowerCase().includes(q)));
 
+  const mode = el('sort').value;
   const key = {
     total: p => -p.bestTotalUsd,
     unit: p => -((p.best && p.best.payoutUsd) || 0),
     count: p => -p.item.count,
-  }[el('sort').value];
+  }[mode];
 
-  list.sort(key ? (a, b) => key(a) - key(b)
-                : (a, b) => (a.item.marketHashName || a.item.name).localeCompare(b.item.marketHashName || b.item.name));
+  if (mode === 'game') {
+    // Игры идут в порядке их стоимости, внутри игры — предметы по стоимости.
+    const order = {};
+    report.byApp.forEach((a, i) => { order[a.appId] = i; });
+    list.sort((a, b) => (order[a.item.appId] ?? 99) - (order[b.item.appId] ?? 99) || b.bestTotalUsd - a.bestTotalUsd);
+  } else {
+    list.sort(key ? (a, b) => key(a) - key(b)
+                  : (a, b) => (a.item.marketHashName || a.item.name).localeCompare(b.item.marketHashName || b.item.name));
+  }
   return list;
+}
+
+function appName(appId) {
+  const found = report.byApp.find(a => a.appId === appId);
+  return found ? found.appName : String(appId);
 }
 
 function renderItems(reset = true) {
@@ -455,7 +480,7 @@ function renderItems(reset = true) {
       '<div class="pr">' + (best ? money(p.bestTotalUsd * report.usdRub, 0) + ' ' + t('rub') : '<span class="muted">' + t('noPrice') + '</span>') + '</div>' +
       '<div class="q"><span>' + i.count + ' ' + t('pcs') + '</span><span>' + (best ? money(best.payoutUsd) + t('perPc') : '') + '</span></div>' +
       quotes +
-      '<div><span class="badge">' + badge + '</span> ' +
+      '<div><span class="badge">' + esc(appName(i.appId)) + '</span> <span class="badge">' + badge + '</span> ' +
       (i.rarity ? '<span class="badge">' + esc(i.rarity) + '</span>' : '') + '</div>' +
     '</div>';
   }).join(''));
@@ -539,7 +564,7 @@ el('saveSettings').onclick = async () => {
 };
 
 el('more').onclick = () => renderItems(false);
-['q', 'sort', 'onlyPriced', 'onlyTradable'].forEach(id => el(id).addEventListener('input', () => report && renderItems()));
+['q', 'sort', 'game', 'onlyPriced', 'onlyTradable'].forEach(id => el(id).addEventListener('input', () => report && renderItems()));
 el('newProfile').addEventListener('keydown', e => { if (e.key === 'Enter') el('add').click(); });
 
 applyStatic();
