@@ -204,6 +204,13 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         if (report.NoSalesPositions > 0)
             report.Notes.Add(S.NoSalesNote(report.NoSalesPositions, report.NoSalesValue.Rub));
 
+        var locked = priced.Where(p => p.Item.TemporarilyLocked).ToList();
+        report.LockedPositions = locked.Count;
+        report.LockedCount = locked.Sum(p => p.Item.Count);
+        report.LockedUntilNearest = locked.Count == 0 ? null : locked.Min(p => p.Item.TradableAfter);
+        if (report.LockedPositions > 0)
+            report.Notes.Add(S.LockedNote(report.LockedCount, report.LockedUntilNearest!.Value));
+
         var unsellable = priced.Where(p => !p.Item.Tradable && !p.Item.Marketable).ToList();
         report.UnsellablePositions = unsellable.Count;
         report.UnsellableCount = unsellable.Sum(p => p.Item.Count);

@@ -18,6 +18,15 @@ public sealed class InventoryItem
     public string? Exterior { get; init; }
     public bool Tradable { get; init; }
     public bool Marketable { get; init; }
+
+    /// <summary>
+    /// Когда предмет снова можно будет обменять. Заполняется, если Steam сообщил срок
+    /// временной блокировки; для навсегда непередаваемых остаётся пустым.
+    /// </summary>
+    public DateTimeOffset? TradableAfter { get; init; }
+
+    /// <summary>Сейчас нельзя, но срок известен — через него это снова деньги.</summary>
+    public bool TemporarilyLocked => !Tradable && TradableAfter > DateTimeOffset.Now;
     public int Count { get; set; }
 
     public string ImageUrl => string.IsNullOrEmpty(IconUrl)
@@ -75,6 +84,11 @@ public sealed class Report
     public int UniqueItems { get; set; }
     public int TradableItems { get; set; }
     public int MarketableItems { get; set; }
+    /// <summary>Заблокировано временно: количество, позиции и ближайшая дата разблокировки.</summary>
+    public int LockedCount { get; set; }
+    public int LockedPositions { get; set; }
+    public DateTimeOffset? LockedUntilNearest { get; set; }
+
     /// <summary>Позиции, которые нельзя продать вообще: без обмена и без маркета.</summary>
     public int UnsellablePositions { get; set; }
     public int UnsellableCount { get; set; }

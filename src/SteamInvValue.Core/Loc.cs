@@ -127,6 +127,10 @@ public static class S
         $"Steam: {skipped} имён не опрошено (лимит запросов). Запусти ещё раз — кэш накопится и покрытие вырастет.",
         $"Steam: {skipped} names were not queried (rate limit). Run again — the cache grows and coverage improves.");
 
+    public static string LockedNote(int items, DateTimeOffset until) => Loc.Pick(
+        $"{items} шт нельзя обменять временно, ближайшие освободятся {until:dd.MM.yyyy} — потом это снова деньги.",
+        $"{items} items are on a temporary trade hold, the earliest clears on {until:dd.MM.yyyy} — after that they are money again.");
+
     public static string NoSalesNote(int positions, decimal rub) => Loc.Pick(
         $"{positions} позиций на {rub:N0} ₽ за сутки на Steam не продались ни разу — цена есть, покупателя нет.",
         $"{positions} positions worth {rub:N0} RUB had zero sales on Steam in 24 hours — there is a price but no buyer.");

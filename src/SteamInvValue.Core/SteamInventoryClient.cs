@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace SteamInvValue.Core;
 
@@ -6,7 +7,7 @@ namespace SteamInvValue.Core;
 /// Читает публичный инвентарь Steam: сначала со страницы профиля берёт список игр
 /// (g_rgAppContextData), затем постранично тянет /inventory/{id}/{app}/{ctx}.
 /// </summary>
-public sealed class SteamInventoryClient(Action<string>? log = null)
+public sealed partial class SteamInventoryClient(Action<string>? log = null)
 {
     private readonly Action<string> _log = log ?? (_ => { });
 
@@ -90,6 +91,7 @@ public sealed class SteamInventoryClient(Action<string>? log = null)
                     Rarity = Tag(d, "Rarity"),
                     Exterior = Tag(d, "Exterior"),
                     Tradable = Num(d, "tradable") == 1,
+                    TradableAfter = TradeHoldUntil(d),
                     Marketable = Num(d, "marketable") == 1,
                     Count = amount,
                 };
@@ -147,6 +149,44 @@ public sealed class SteamInventoryClient(Action<string>? log = null)
                 _ => 0
             }
             : 0;
+
+    /// <summary>
+    /// Срок временной блокировки обмена. Steam кладёт его в owner_descriptions строкой вида
+    /// «Tradable After Sep 5, 2026 (07:00:00) GMT», а в отсутствие таковой у заблокированного
+    /// предмета годится cache_expiration. Оба поля приходят не всегда: owner_descriptions
+    /// Steam отдаёт владельцу, а не стороннему наблюдателю.
+    /// </summary>
+    private static DateTimeOffset? TradeHoldUntil(JsonElement d)
+    {
+        if (d.TryGetProperty("owner_descriptions", out var owner) && owner.ValueKind == JsonValueKind.Array)
+            foreach (var line in owner.EnumerateArray())
+            {
+                var value = Prop(line, "value");
+                if (value is null || !value.Contains("After", StringComparison.OrdinalIgnoreCase)) continue;
+
+                var match = TradableAfterPattern().Match(value);
+                if (!match.Success) continue;
+
+                var text = $"{match.Groups[1].Value} {match.Groups[2].Value}";
+                if (DateTimeOffset.TryParseExact(text, "MMM d, yyyy HH:mm:ss",
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
+                    return parsed;
+            }
+
+        // Запасной путь: у заблокированного предмета Steam обычно держит здесь конец блокировки.
+        if (Num(d, "tradable") == 0 && Prop(d, "cache_expiration") is { } cache &&
+            DateTimeOffset.TryParse(cache, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal, out var expiration) &&
+            expiration > DateTimeOffset.Now)
+            return expiration;
+
+        return null;
+    }
+
+    // Steam пишет и «Tradable After», и «Tradable/Marketable After» — префикс должен быть гибким.
+    [GeneratedRegex(@"(?:Tradable|Marketable)[^ ]* After ([A-Za-z]{3} \d{1,2}, \d{4}) \((\d{2}:\d{2}:\d{2})\)")]
+    private static partial Regex TradableAfterPattern();
 
     private static string? Tag(JsonElement d, string category)
     {

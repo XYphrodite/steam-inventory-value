@@ -190,6 +190,12 @@ the Steam Market in the last 24 hours. A price without sales is not money: an it
 that nobody bought all day will not sell at that price. Those positions get their own
 "no buyers" line and a checkbox filter in the web panel.
 
+**"Not yet" and "never" are different lines.** When Steam reports a temporary trade hold, the
+item counts as temporarily locked and is shown separately with the earliest unlock date: after
+that it is money again. Caveat: the deadline comes in `owner_descriptions`, which Steam serves
+to the owner — reading someone else's public inventory may not include it, and then everything
+looks as before.
+
 **Unsellable items are not counted.** A price only counts if the marketplace would actually
 take the item: third parties need `tradable`, the Steam Market needs `marketable`. Whatever
 qualifies for neither is reported on its own "cannot be sold" line and stays out of the

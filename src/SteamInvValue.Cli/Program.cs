@@ -485,6 +485,8 @@ static void Print(Report r, int top)
         Console.WriteLine(T.UnsellableLine(r.UnsellableCount, r.UnsellablePositions));
     if (r.NoSalesPositions > 0)
         Console.WriteLine(T.NoSalesLine(r.NoSalesPositions, r.NoSalesValue.Rub));
+    if (r.LockedPositions > 0 && r.LockedUntilNearest is { } until)
+        Console.WriteLine(T.LockedLine(r.LockedCount, r.LockedPositions, until));
     Console.WriteLine();
     Console.WriteLine(T.ValueHeader);
     Console.WriteLine(T.CashRow + M(r.BestCash) + T.CashNote);

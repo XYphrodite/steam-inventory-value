@@ -90,6 +90,10 @@ public static class T
         $"Не продаётся    : {positions} позиций на {rub:N0} ₽ — за сутки на Steam ни одной продажи",
         $"No buyers       : {positions} positions worth {rub:N0} RUB — zero Steam sales in 24 hours");
 
+    public static string LockedLine(int items, int positions, DateTimeOffset until) => P(
+        $"Заблокировано   : {items} шт ({positions} позиций) до {until:dd.MM.yyyy} — временно, не навсегда",
+        $"On trade hold   : {items} items ({positions} positions) until {until:dd.MM.yyyy} — temporary, not forever");
+
     public static string ValueHeader => P("СТОИМОСТЬ", "VALUE");
     public static string CashRow => P("  Живые деньги    : ", "  Real money      : ");
     public static string CashNote => P(
