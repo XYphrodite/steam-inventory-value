@@ -21,6 +21,12 @@ public interface IPriceProvider
     bool Supports(int appId);
 
     /// <summary>
+    /// Насколько устарели цены, если площадка отказала и пришлось взять их из кэша.
+    /// null — цены свежие.
+    /// </summary>
+    TimeSpan? StaleAge => null;
+
+    /// <summary>
     /// Можно ли реально продать этот предмет на площадке. Сторонним нужен обмен,
     /// Steam-маркету — признак marketable. Непродаваемое в суммы не идёт.
     /// </summary>

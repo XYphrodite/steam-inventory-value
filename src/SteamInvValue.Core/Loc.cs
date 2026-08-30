@@ -131,6 +131,10 @@ public static class S
         $"{items} шт нельзя обменять временно, ближайшие освободятся {until:dd.MM.yyyy} — потом это снова деньги.",
         $"{items} items are on a temporary trade hold, the earliest clears on {until:dd.MM.yyyy} — after that they are money again.");
 
+    public static string StalePricesNote(string provider, TimeSpan age) => Loc.Pick(
+        $"{provider}: площадка отказала, взяты цены из кэша давностью {age.TotalMinutes:N0} мин.",
+        $"{provider}: the marketplace refused, prices taken from cache {age.TotalMinutes:N0} min old.");
+
     public static string NoSalesNote(int positions, decimal rub) => Loc.Pick(
         $"{positions} позиций на {rub:N0} ₽ за сутки на Steam не продались ни разу — цена есть, покупателя нет.",
         $"{positions} positions worth {rub:N0} RUB had zero sales on Steam in 24 hours — there is a price but no buyer.");

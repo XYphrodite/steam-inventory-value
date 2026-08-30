@@ -45,7 +45,11 @@ public sealed class AppConfig
     public int AutoRefreshMinutes { get; set; }
     /// <summary>http://user:pass@host:port или socks5://host:port</summary>
     public string? Proxy { get; set; }
-    /// <summary>steamLoginSecure авторизованной сессии — снимает лимит 429 на инвентарь.</summary>
+    /// <summary>
+    /// steamLoginSecure авторизованной сессии: смягчает лимит 429 и заставляет Steam отдавать
+    /// сроки трейд-холда. На диске лежит зашифрованным ключом учётной записи Windows —
+    /// это пропуск к аккаунту, а не настройка.
+    /// </summary>
     public string? Cookie { get; set; }
 
     [JsonIgnore] public string Path { get; private set; } = "";
@@ -86,6 +90,7 @@ public sealed class AppConfig
         }
 
         cfg.Path = path;
+        if (!string.IsNullOrWhiteSpace(cfg.Cookie)) cfg.Cookie = DataProtection.Unprotect(cfg.Cookie);
         cfg.Apply();
         return cfg;
     }
@@ -105,7 +110,16 @@ public sealed class AppConfig
     {
         var dir = System.IO.Path.GetDirectoryName(Path);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-        File.WriteAllText(Path, JsonSerializer.Serialize(this, Json));
+
+        // Cookie шифруется прямо перед записью и тут же возвращается в открытый вид:
+        // в памяти он нужен как есть, на диске — нет.
+        var plain = Cookie;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(Cookie)) Cookie = DataProtection.Protect(Cookie);
+            File.WriteAllText(Path, JsonSerializer.Serialize(this, Json));
+        }
+        finally { Cookie = plain; }
     }
 
     public TrackedProfile? Find(string key) =>

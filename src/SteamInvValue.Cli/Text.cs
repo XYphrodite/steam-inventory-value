@@ -53,6 +53,38 @@ public static class T
         $"Прокси: {(proxy ? "задан" : "нет")}   Cookie Steam: {(cookie ? "задан" : "нет")}",
         $"Proxy: {(proxy ? "set" : "none")}   Steam cookie: {(cookie ? "set" : "none")}");
 
+    // --- cookie ---
+    public static string CookieSet => P("Cookie Steam задан.", "The Steam cookie is set.");
+    public static string CookieMissing => P("Cookie Steam не задан.", "No Steam cookie is set.");
+    public static string CookieSaved(string path) => P(
+        $"Cookie сохранён и зашифрован ключом учётной записи Windows: {path}",
+        $"Cookie saved, encrypted with your Windows account key: {path}");
+    public static string CookieCleared => P("Cookie удалён из конфига.", "Cookie removed from the config.");
+    public static string CookieHelp => P(
+        """
+        Зачем: Steam мягче ограничивает запросы от авторизованной сессии и только ей
+        отдаёт сроки трейд-холда — без cookie не видно, что вещь заблокирована временно.
+
+        Где взять: DevTools -> Application -> Cookies -> steamcommunity.com -> steamLoginSecure.
+        Это пропуск к твоему аккаунту: никому его не показывай, а если утёк — выйди
+        из аккаунта или смени пароль, и он станет мусором.
+
+        Задать:  steaminv cookie "76561198...%7C%7C..."
+        Убрать:  steaminv cookie clear
+        """,
+        """
+        Why: Steam is far softer on rate limits for an authenticated session, and only that
+        session is told about trade holds — without a cookie you cannot see that an item is
+        locked temporarily rather than forever.
+
+        Where: DevTools -> Application -> Cookies -> steamcommunity.com -> steamLoginSecure.
+        It is a pass to your account: never show it to anyone, and if it leaks, sign out or
+        change your password and it turns into garbage.
+
+        Set:    steaminv cookie "76561198...%7C%7C..."
+        Clear:  steaminv cookie clear
+        """);
+
     // --- прогон ---
     public static string NoInventories => P(
         "В конфиге нет ни одного инвентаря.", "There are no inventories in the config.");
@@ -210,6 +242,7 @@ steaminv — оценка инвентарей Steam. Ссылки хранят�
   steaminv list                  что под наблюдением и на сколько
   steaminv history [ключ]        как менялась стоимость от запуска к запуску
   steaminv diff [ключ]           что изменилось между двумя последними замерами
+  steaminv cookie [значение]     cookie сессии Steam: сроки холда и мягкие лимиты
   steaminv config                где лежит конфиг и что в нём
   steaminv web                   открыть веб-панель на http://localhost:5188
   steaminv update                скачать и поставить свежий релиз
@@ -248,6 +281,7 @@ steaminv — Steam inventory valuation. Profile links live in the config and are
   steaminv list                  what is watched and what it is worth
   steaminv history [key]         how the value changed from run to run
   steaminv diff [key]            what changed between the last two measurements
+  steaminv cookie [value]        Steam session cookie: trade holds and softer limits
   steaminv config                where the config lives and what is in it
   steaminv web                   open the web panel at http://localhost:5188
   steaminv update                download and install the latest release

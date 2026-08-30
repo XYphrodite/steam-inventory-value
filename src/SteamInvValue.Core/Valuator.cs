@@ -164,6 +164,12 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
                 {
                     _log(S.AskingProvider(appNames.GetValueOrDefault(appId, appId.ToString()), provider.Name, names.Count));
                     var prices = await provider.GetPricesUsdAsync(appId, names, ct);
+
+                    if (provider.StaleAge is { } age)
+                    {
+                        var note = S.StalePricesNote(provider.Name, age);
+                        if (!report.Notes.Contains(note)) report.Notes.Add(note);
+                    }
                     foreach (var p in group)
                     {
                         if (p.Item.MarketHashName is null) continue;

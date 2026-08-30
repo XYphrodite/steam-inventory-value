@@ -236,6 +236,10 @@ inventory full of trading cards the difference is real.
 | Waxpeer | 730, 570, 440, 252490 | same |
 | Market.CSGO | 730 | same |
 
+If a marketplace refuses (Skinport, for instance, rate-limits and answers `403`), the last
+known prices are taken from the cache even when expired, and the notes say how old they are.
+Losing a whole marketplace over one refusal is worse than showing half-hour-old prices.
+
 Cached under `%LOCALAPPDATA%\SteamInvValue\cache`: marketplace price lists for 30 minutes,
 individual Steam prices for 12 hours, and the inventory itself for 30 minutes. That last one
 matters: without it every repeated run would re-read the inventory and hit the Steam rate
@@ -268,8 +272,24 @@ This is the main constraint on the whole idea:
   --proxy  http://user:pass@host:port               # or socks5://host:port
   ```
 
-  The same values are read from `STEAMINV_COOKIE` and `STEAMINV_PROXY`, and in the web UI
-  they are set in the Settings panel and saved to the config. Grab the `steamLoginSecure` cookie in DevTools → Application →
+  The easiest way is the command, which saves it to the config right away:
+
+  ```
+  steaminv cookie "76561198...%7C%7C..."   # set
+  steaminv cookie                          # status and where to get it
+  steaminv cookie clear                    # remove
+  ```
+
+  **The cookie is encrypted at rest** with your Windows account key (DPAPI): the config holds a
+  `dpapi:AQAAAN...` string that is useless on another machine or under another account. It does
+  not stop malware already running as you — it would just ask Windows to decrypt.
+
+  The same values are read from `STEAMINV_COOKIE` and `STEAMINV_PROXY`, and in the web UI they
+  are set in the Settings panel.
+
+  **The cookie is not only about rate limits.** Steam reports trade-hold deadlines only to an
+  authenticated session, so without it you cannot tell "locked for a week" from "locked
+  forever" — verified on a live inventory, the deadline line never appears. Grab the `steamLoginSecure` cookie in DevTools → Application →
   Cookies → steamcommunity.com; it is full access to the account, so never show it to anyone.
 * For CS2 skins the third-party marketplaces are faster and more complete: `--no-steam`
   returns in seconds. Steam is mostly needed for trading cards and anything that is not CS.

@@ -39,12 +39,37 @@ public sealed class FileCache
         catch { /* кэш не критичен */ }
     }
 
-    public async Task<T> GetOrAddAsync<T>(string key, TimeSpan ttl, Func<Task<T>> factory)
+    /// <summary>Сколько времени прошло с последней записи; null — записи нет.</summary>
+    public TimeSpan? Age(string key)
+    {
+        var p = PathFor(key);
+        return File.Exists(p) ? DateTime.UtcNow - File.GetLastWriteTimeUtc(p) : null;
+    }
+
+    /// <summary>
+    /// Берёт из кэша или обновляет. Если обновление не удалось, отдаёт просроченное значение,
+    /// сообщив его возраст: цены получасовой давности несравнимо лучше, чем никаких — на этом
+    /// раньше терялась целая площадка, если она отвечала отказом.
+    /// </summary>
+    public async Task<T> GetOrAddAsync<T>(string key, TimeSpan ttl, Func<Task<T>> factory,
+        Action<TimeSpan>? usedStale = null)
     {
         var cached = Get<T>(key, ttl);
         if (cached is not null) return cached;
-        var fresh = await factory();
-        if (fresh is not null) Set(key, fresh);
-        return fresh;
+
+        try
+        {
+            var fresh = await factory();
+            if (fresh is not null) Set(key, fresh);
+            return fresh;
+        }
+        catch
+        {
+            var stale = Get<T>(key, TimeSpan.MaxValue);
+            if (stale is null) throw;
+
+            usedStale?.Invoke(Age(key) ?? TimeSpan.Zero);
+            return stale;
+        }
     }
 }

@@ -9,6 +9,9 @@ public sealed class MarketCsgoProvider(FileCache cache) : IPriceProvider
     public string Name => "Market.CSGO";
     public string Site => "https://market.csgo.com";
     public decimal PayoutRate => 0.95m; // комиссия площадки ~5%
+    /// <summary>Возраст цен, взятых из кэша после отказа площадки.</summary>
+    public TimeSpan? StaleAge { get; private set; }
+
     public bool Supports(int appId) => appId == 730;
 
     public async Task<IReadOnlyDictionary<string, decimal>> GetPricesUsdAsync(
@@ -32,6 +35,6 @@ public sealed class MarketCsgoProvider(FileCache cache) : IPriceProvider
                     d[name] = price;
             }
             return d;
-        });
+        }, age => StaleAge = age);
     }
 }

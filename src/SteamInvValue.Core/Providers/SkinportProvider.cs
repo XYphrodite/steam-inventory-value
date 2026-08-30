@@ -10,6 +10,9 @@ public sealed class SkinportProvider(FileCache cache) : IPriceProvider
     public string Name => "Skinport";
     public string Site => "https://skinport.com";
     public decimal PayoutRate => 0.88m; // комиссия продавца ~12%
+    /// <summary>Возраст цен, взятых из кэша после отказа площадки.</summary>
+    public TimeSpan? StaleAge { get; private set; }
+
     public bool Supports(int appId) => Apps.Contains(appId);
 
     public async Task<IReadOnlyDictionary<string, decimal>> GetPricesUsdAsync(
@@ -30,7 +33,7 @@ public sealed class SkinportProvider(FileCache cache) : IPriceProvider
                 if (price is > 0) d[name] = price.Value;
             }
             return d;
-        });
+        }, age => StaleAge = age);
         return map;
     }
 

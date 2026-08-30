@@ -13,6 +13,9 @@ public sealed class WaxpeerProvider(FileCache cache) : IPriceProvider
     public string Name => "Waxpeer";
     public string Site => "https://waxpeer.com";
     public decimal PayoutRate => 0.94m; // ~6% комиссии продавца
+    /// <summary>Возраст цен, взятых из кэша после отказа площадки.</summary>
+    public TimeSpan? StaleAge { get; private set; }
+
     public bool Supports(int appId) => Games.ContainsKey(appId);
 
     public async Task<IReadOnlyDictionary<string, decimal>> GetPricesUsdAsync(
@@ -36,6 +39,6 @@ public sealed class WaxpeerProvider(FileCache cache) : IPriceProvider
                 if (price > 0) d[name] = price;
             }
             return d;
-        });
+        }, age => StaleAge = age);
     }
 }

@@ -18,7 +18,7 @@ int? budgetOpt = null, delayOpt = null, limitOpt = null;
 string? langOpt = null, proxyOpt = null, cookieOpt = null, uiOpt = null;
 var top = 20;
 
-var commands = new[] { "add", "rm", "remove", "list", "history", "config", "run", "all", "update", "web", "diff" };
+var commands = new[] { "add", "rm", "remove", "list", "history", "config", "run", "all", "update", "web", "diff", "cookie" };
 var helpRequested = false;
 var checkRequested = false;
 bool? updateCheckOpt = null;
@@ -100,6 +100,7 @@ try
         "list" => List(),
         "history" => ShowHistory(),
         "diff" => await ShowDiffAsync(),
+        "cookie" => SetCookie(),
         "config" => ShowConfig(),
         _ => await Run(),
     };
@@ -182,6 +183,35 @@ int ShowHistory()
         }
     }
     Console.WriteLine();
+    return 0;
+}
+
+/// <summary>
+/// Сохраняет cookie сессии Steam в конфиг. На диске он шифруется ключом учётной записи,
+/// потому что это пропуск к аккаунту, а не настройка.
+/// </summary>
+int SetCookie()
+{
+    if (target is null)
+    {
+        Console.WriteLine(Http.HasCookie ? T.CookieSet : T.CookieMissing);
+        Console.WriteLine(T.CookieHelp);
+        return 0;
+    }
+
+    if (target.Equals("clear", StringComparison.OrdinalIgnoreCase))
+    {
+        config.Cookie = null;
+        config.Save();
+        config.Apply();
+        Console.WriteLine(T.CookieCleared);
+        return 0;
+    }
+
+    config.Cookie = target;
+    config.Save();
+    config.Apply();
+    Console.WriteLine(T.CookieSaved(config.Path));
     return 0;
 }
 
