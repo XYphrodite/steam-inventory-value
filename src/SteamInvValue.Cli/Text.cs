@@ -80,6 +80,16 @@ public static class T
         $"Продать нельзя   : {items} шт ({positions} позиций) — в суммы не входят",
         $"Cannot be sold   : {items} items ({positions} positions) — excluded from totals");
 
+    /// <summary>Хвост строки в топе: продаж за сутки на Steam.</summary>
+    public static string Sales(SteamInvValue.Core.PricedItem p) =>
+        p.Steam is null ? "" :
+        p.SteamVolume > 0 ? P($"{p.SteamVolume} прод./сут", $"{p.SteamVolume} sales/day")
+                          : P("не продаётся", "no sales");
+
+    public static string NoSalesLine(int positions, decimal rub) => P(
+        $"Не продаётся    : {positions} позиций на {rub:N0} ₽ — за сутки на Steam ни одной продажи",
+        $"No buyers       : {positions} positions worth {rub:N0} RUB — zero Steam sales in 24 hours");
+
     public static string ValueHeader => P("СТОИМОСТЬ", "VALUE");
     public static string CashRow => P("  Живые деньги    : ", "  Real money      : ");
     public static string CashNote => P(

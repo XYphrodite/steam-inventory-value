@@ -48,7 +48,10 @@ public sealed partial class SteamMarketProvider(
         return Math.Max(min, current - 100);
     }
 
-    /// <summary>Объём продаж за сутки по именам, заполняется попутно.</summary>
+    /// <summary>
+    /// Объём продаж за сутки по именам, заполняется попутно — и из свежих ответов, и из кэша.
+    /// Нужен, чтобы отличить «стоит 15 $» от «стоит 15 $, но за сутки не купили ни одного».
+    /// </summary>
     public Dictionary<string, int> Volume { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Сколько имён осталось неопрошенными из-за лимита/блокировки.</summary>

@@ -190,8 +190,19 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         await fx.LoadAsync(ct);
         report.UsdRub = fx.UsdRub;
 
+        // Объём продаж собран попутно опросом Steam — раскладываем его по позициям.
+        foreach (var p in priced)
+            if (p.Item.MarketHashName is { } name && steam.Volume.TryGetValue(name, out var volume))
+                p.SteamVolume = volume;
+
         report.PricedItems = priced.Count(p => p.Quotes.Count > 0);
         report.UnpricedItems = priced.Count - report.PricedItems;
+
+        var noSales = priced.Where(p => p.NoSales && p.BestTotalUsd > 0).ToList();
+        report.NoSalesPositions = noSales.Count;
+        report.NoSalesValue = fx.Convert(noSales.Sum(p => p.BestTotalUsd));
+        if (report.NoSalesPositions > 0)
+            report.Notes.Add(S.NoSalesNote(report.NoSalesPositions, report.NoSalesValue.Rub));
 
         var unsellable = priced.Where(p => !p.Item.Tradable && !p.Item.Marketable).ToList();
         report.UnsellablePositions = unsellable.Count;

@@ -175,6 +175,11 @@ dotnet run --project src/SteamInvValue.Cli -- nickname --json report.json --csv 
 Steam is kept apart from the rest on purpose: it pays into an internal wallet rather than in
 real money, and adding the two into one number would be lying to yourself.
 
+**Liquidity is shown separately.** Every position reports how many such items were sold on
+the Steam Market in the last 24 hours. A price without sales is not money: an item worth $15
+that nobody bought all day will not sell at that price. Those positions get their own
+"no buyers" line and a checkbox filter in the web panel.
+
 **Unsellable items are not counted.** A price only counts if the marketplace would actually
 take the item: third parties need `tradable`, the Steam Market needs `marketable`. Whatever
 qualifies for neither is reported on its own "cannot be sold" line and stays out of the

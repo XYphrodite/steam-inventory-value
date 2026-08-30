@@ -135,6 +135,7 @@
           <div><label data-t="gameLabel"></label><select id="game"></select></div>
           <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyPriced" checked> <span data-t="onlyPriced"></span></label></div>
           <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyTradable"> <span data-t="onlyTradable"></span></label></div>
+          <div style="flex:0 0 auto"><label class="chk"><input type="checkbox" id="onlyNoSales"> <span data-t="onlyNoSales"></span></label></div>
         </div>
         <div id="count" class="muted" style="margin-bottom:10px"></div>
         <div class="grid" id="items"></div>
@@ -181,6 +182,8 @@ const I18N = {
     tItems: 'Предметов', tItemsSub1: ' уникальных · с ценой ', tItemsSub2: ', без цены ',
     tLiquidity: 'Ликвидность', tTradable: ' шт торгуемых', tLiquiditySub: ' шт продаваемых на маркете',
     tUnsellable: 'Продать нельзя', tUnsellableSub: ' позиций без обмена и маркета · в суммы не входят',
+    tNoSales: 'Не продаётся', tNoSalesSub: ' позиций · за сутки на Steam ни одной продажи',
+    salesDay: ' прод./сут', noSales: 'нет продаж', onlyNoSales: 'только неликвид',
     colMarketplace: 'Площадка', colList: 'Ценник, $', colPayout: 'На руки, $', colPayoutRub: 'На руки, ₽',
     colPositions: 'Позиций', colGame: 'Игра', colItems: 'Предметов', colBest: 'Лучшая цена, $',
     colSteam: 'Steam, $', colDate: 'Замер', colChange: 'изм.',
@@ -221,6 +224,8 @@ const I18N = {
     tItems: 'Items', tItemsSub1: ' unique · priced ', tItemsSub2: ', unpriced ',
     tLiquidity: 'Liquidity', tTradable: ' tradable', tLiquiditySub: ' marketable',
     tUnsellable: 'Cannot be sold', tUnsellableSub: ' positions with no trading and no market · excluded from totals',
+    tNoSales: 'No buyers', tNoSalesSub: ' positions · zero Steam sales in 24 hours',
+    salesDay: ' sales/day', noSales: 'no sales', onlyNoSales: 'no-sale items only',
     colMarketplace: 'Marketplace', colList: 'List, $', colPayout: 'Payout, $', colPayoutRub: 'Payout, RUB',
     colPositions: 'Positions', colGame: 'Game', colItems: 'Items', colBest: 'Best price, $',
     colSteam: 'Steam, $', colDate: 'Measurement', colChange: 'change',
@@ -363,7 +368,9 @@ function render() {
          r.uniqueItems + t('tItemsSub1') + r.pricedItems + t('tItemsSub2') + r.unpricedItems) +
     tile(t('tLiquidity'), r.tradableItems + t('tTradable'), r.marketableItems + t('tLiquiditySub')) +
     tile(t('tUnsellable'), (r.unsellableCount || 0) + ' ' + t('pcs'),
-         (r.unsellablePositions || 0) + t('tUnsellableSub'));
+         (r.unsellablePositions || 0) + t('tUnsellableSub')) +
+    tile(t('tNoSales'), money((r.noSalesValue || {rub: 0}).rub, 0) + ' ' + t('rub'),
+         (r.noSalesPositions || 0) + t('tNoSalesSub'));
 
   el('prov').innerHTML = '<table><tr><th>' + t('colMarketplace') + '</th><th class="n">' + t('colList') +
     '</th><th class="n">' + t('colPayout') + '</th><th class="n">' + t('colPayoutRub') + '</th><th class="n">' + t('colPositions') + '</th></tr>' +
@@ -431,6 +438,7 @@ function filtered() {
   const list = report.items.filter(p =>
     (!el('onlyPriced').checked || p.bestTotalUsd > 0) &&
     (!el('onlyTradable').checked || p.item.tradable) &&
+    (!el('onlyNoSales').checked || (p.steam && !p.steamVolume)) &&
     (!game || String(p.item.appId) === game) &&
     (!q || (p.item.marketHashName || p.item.name).toLowerCase().includes(q)));
 
@@ -474,12 +482,15 @@ function renderItems(reset = true) {
     const quotes = (p.quotes || []).slice().sort((a, b) => b.payoutUsd - a.payoutUsd)
       .map(q => '<div class="q"><span>' + esc(q.provider) + '</span><span>' + money(q.payoutUsd) + ' $</span></div>').join('');
     const badge = !i.tradable && !i.marketable ? t('badgeNoSell') : i.tradable ? t('badgeTradable') : t('badgeMarket');
+    const sales = p.steam
+      ? '<div class="q"><span>' + (p.steamVolume > 0 ? p.steamVolume + t('salesDay') : t('noSales')) + '</span><span></span></div>'
+      : '';
     return '<div class="it">' +
       '<img loading="lazy" src="' + (i.iconUrl ? '/img/' + i.iconUrl + '/128fx128f' : '') + '" alt="">' +
       '<div class="nm">' + esc(i.marketHashName || i.name) + '</div>' +
       '<div class="pr">' + (best ? money(p.bestTotalUsd * report.usdRub, 0) + ' ' + t('rub') : '<span class="muted">' + t('noPrice') + '</span>') + '</div>' +
       '<div class="q"><span>' + i.count + ' ' + t('pcs') + '</span><span>' + (best ? money(best.payoutUsd) + t('perPc') : '') + '</span></div>' +
-      quotes +
+      quotes + sales +
       '<div><span class="badge">' + esc(appName(i.appId)) + '</span> <span class="badge">' + badge + '</span> ' +
       (i.rarity ? '<span class="badge">' + esc(i.rarity) + '</span>' : '') + '</div>' +
     '</div>';
@@ -564,7 +575,7 @@ el('saveSettings').onclick = async () => {
 };
 
 el('more').onclick = () => renderItems(false);
-['q', 'sort', 'game', 'onlyPriced', 'onlyTradable'].forEach(id => el(id).addEventListener('input', () => report && renderItems()));
+['q', 'sort', 'game', 'onlyPriced', 'onlyTradable', 'onlyNoSales'].forEach(id => el(id).addEventListener('input', () => report && renderItems()));
 el('newProfile').addEventListener('keydown', e => { if (e.key === 'Enter') el('add').click(); });
 
 applyStatic();

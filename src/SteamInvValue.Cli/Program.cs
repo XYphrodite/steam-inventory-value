@@ -483,6 +483,8 @@ static void Print(Report r, int top)
     Console.WriteLine(T.PricedLine(r.PricedItems, r.UnpricedItems));
     if (r.UnsellableCount > 0)
         Console.WriteLine(T.UnsellableLine(r.UnsellableCount, r.UnsellablePositions));
+    if (r.NoSalesPositions > 0)
+        Console.WriteLine(T.NoSalesLine(r.NoSalesPositions, r.NoSalesValue.Rub));
     Console.WriteLine();
     Console.WriteLine(T.ValueHeader);
     Console.WriteLine(T.CashRow + M(r.BestCash) + T.CashNote);
@@ -523,8 +525,9 @@ static void Print(Report r, int top)
         Console.WriteLine();
         Console.WriteLine(T.TopHeader(best.Count));
         foreach (var p in best)
-            Console.WriteLine($"  {Trim(p.Item.MarketHashName ?? p.Item.Name, 44),-44}" +
-                              $"{p.Item.Count,4} x {p.Best!.PayoutUsd,9:N2} $ = {p.BestTotalUsd,10:N2} $  {p.Best.Provider}");
+            Console.WriteLine($"  {Trim(p.Item.MarketHashName ?? p.Item.Name, 40),-40}" +
+                              $"{p.Item.Count,4} x {p.Best!.PayoutUsd,9:N2} $ = {p.BestTotalUsd,10:N2} $  " +
+                              $"{p.Best.Provider,-12}{T.Sales(p)}");
     }
 
     if (r.Notes.Count > 0)

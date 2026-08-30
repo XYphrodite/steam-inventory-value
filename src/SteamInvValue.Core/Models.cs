@@ -43,6 +43,12 @@ public sealed class PricedItem
 
     public Quote? Best => Quotes.Count == 0 ? null : Quotes.MaxBy(q => q.PayoutUsd);
     public Quote? Steam => Quotes.FirstOrDefault(q => q.Provider == Marketplaces.Steam);
+
+    /// <summary>Сколько таких предметов продалось на Steam-маркете за сутки. 0 — ни одного.</summary>
+    public int SteamVolume { get; set; }
+
+    /// <summary>Цена на Steam есть, а покупателей за сутки не было — продать будет нечем и некому.</summary>
+    public bool NoSales => Steam is not null && SteamVolume == 0;
     /// <summary>Лучшее предложение среди тех, кто платит живыми деньгами.</summary>
     public Quote? BestCash => Quotes.Where(q => q.Provider != Marketplaces.Steam).MaxBy(q => q.PayoutUsd);
     public decimal BestTotalUsd => (Best?.PayoutUsd ?? 0m) * Item.Count;
@@ -82,6 +88,10 @@ public sealed class Report
     public Money BestCash { get; set; } = new(0, 0, 0, 0);
     /// <summary>Что нигде, кроме Steam, не продаётся.</summary>
     public Money SteamOnly { get; set; } = new(0, 0, 0, 0);
+    /// <summary>Позиции с ценой Steam, но без единой продажи за сутки.</summary>
+    public int NoSalesPositions { get; set; }
+    /// <summary>Сколько «стоит» этот неликвид по лучшей цене — цифра, которой не стоит верить.</summary>
+    public Money NoSalesValue { get; set; } = new(0, 0, 0, 0);
     /// <summary>Сколько позиций получили цену Steam — без этого сравнение со Steam некорректно.</summary>
     public int SteamCovered { get; set; }
     /// <summary>Сколько имён Steam не успел опросить из-за лимита запросов.</summary>
