@@ -105,13 +105,15 @@ Releases build themselves: `git tag v0.1.1 && git push --tags` triggers the
 [workflow](.github/workflows/release.yml), which publishes both builds and attaches the
 archives to the release.
 
-Web:
+Web panel:
 
 ```
-dotnet run --project src/SteamInvValue.Web
+steaminv web              # http://localhost:5188
+steaminv web 5300         # on a different port
 ```
 
-Then open http://localhost:5188 (change the port with `STEAMINV_URL`). The page shows the
+From source — `dotnet run --project src/SteamInvValue.Web`. The port comes from the command
+argument or the `STEAMINV_URL` variable. The page shows the
 watched inventories with their current value on the left, and on the right the summary tiles,
 the history chart, per-marketplace and per-game tables, and a filterable item grid.
 Inventories are added and removed right there; settings are edited in the Settings panel and

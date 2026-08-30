@@ -120,6 +120,11 @@ public static class T
     public static string TopHeader(int n) => P($"ТОП-{n} ПО СТОИМОСТИ", $"TOP {n} BY VALUE");
     public static string NotesHeader => P("ЗАМЕЧАНИЯ", "NOTES");
 
+    // --- веб ---
+    public static string WebMissing(string dir) => Loc.Pick(
+        $"Веб-морда не установлена в {dir}. Поставь её: steaminv update, либо установщиком с -Components web.",
+        $"The web app is not installed in {dir}. Get it with: steaminv update, or the installer with -Components web.");
+
     // --- экспорт ---
     public static string JsonWritten(string path) => P($"JSON: {path}", $"JSON: {path}");
     public static string CsvWritten(string path) => P($"CSV: {path}", $"CSV: {path}");
@@ -153,6 +158,7 @@ steaminv — оценка инвентарей Steam. Ссылки хранят�
   steaminv list                  что под наблюдением и на сколько
   steaminv history [ключ]        как менялась стоимость от запуска к запуску
   steaminv config                где лежит конфиг и что в нём
+  steaminv web                   открыть веб-панель на http://localhost:5188
   steaminv update                скачать и поставить свежий релиз
 
 Ключи:
@@ -189,6 +195,7 @@ steaminv — Steam inventory valuation. Profile links live in the config and are
   steaminv list                  what is watched and what it is worth
   steaminv history [key]         how the value changed from run to run
   steaminv config                where the config lives and what is in it
+  steaminv web                   open the web panel at http://localhost:5188
   steaminv update                download and install the latest release
 
 Options:

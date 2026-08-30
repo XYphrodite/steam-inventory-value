@@ -18,7 +18,7 @@ int? budgetOpt = null, delayOpt = null, limitOpt = null;
 string? langOpt = null, proxyOpt = null, cookieOpt = null, uiOpt = null;
 var top = 20;
 
-var commands = new[] { "add", "rm", "remove", "list", "history", "config", "run", "all", "update" };
+var commands = new[] { "add", "rm", "remove", "list", "history", "config", "run", "all", "update", "web" };
 var helpRequested = false;
 var checkRequested = false;
 bool? updateCheckOpt = null;
@@ -91,6 +91,7 @@ try
 {
     // Сама команда «update» проверку не запускает — она и так идёт за свежей версией.
     if (command == "update") return await UpdateAsync();
+    if (command == "web") return Web();
 
     var code = command switch
     {
@@ -337,6 +338,36 @@ async Task ReportUpdateAsync()
         if (info?.IsNewer == true) Console.Error.WriteLine(S.UpdateAvailable(info.Latest, info.Current));
     }
     catch { /* обновление — не повод ломать прогон */ }
+}
+
+/// <summary>
+/// Поднимает веб-морду: запускает соседний exe в этой же консоли, чтобы вывод и Ctrl+C
+/// работали как у обычной команды. Отдельная программа нужна из-за ASP.NET — тащить его
+/// в консоль значило бы удвоить её размер ради того, кто им не пользуется.
+/// </summary>
+int Web()
+{
+    var exe = Path.Combine(Updater.InstallDir, "SteamInvValue.Web.exe");
+    if (!File.Exists(exe))
+    {
+        Console.Error.WriteLine(T.WebMissing(Updater.InstallDir));
+        return 1;
+    }
+
+    var info = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false };
+
+    // steaminv web 5300  или  steaminv web http://localhost:5300 — адрес уходит переменной,
+    // потому что аргументы командной строки перехватил бы сам ASP.NET.
+    if (target is not null)
+        info.Environment["STEAMINV_URL"] = int.TryParse(target, out var port)
+            ? $"http://localhost:{port}"
+            : target;
+
+    using var process = System.Diagnostics.Process.Start(info);
+    if (process is null) return 1;
+
+    process.WaitForExit();
+    return process.ExitCode;
 }
 
 /// <summary>

@@ -101,13 +101,15 @@ dotnet publish src/SteamInvValue.Cli -c Release -r win-x64 --self-contained true
 [workflow](.github/workflows/release.yml), который публикует обе сборки и прикрепляет
 архивы к релизу.
 
-Веб:
+Веб-панель:
 
 ```
-dotnet run --project src/SteamInvValue.Web
+steaminv web              # http://localhost:5188
+steaminv web 5300         # на другом порту
 ```
 
-Дальше открыть http://localhost:5188 (порт меняется переменной `STEAMINV_URL`). В веб-морде
+Из исходников — `dotnet run --project src/SteamInvValue.Web`. Порт задаётся аргументом
+команды или переменной `STEAMINV_URL`. В веб-морде
 слева список инвентарей с текущей суммой, справа — плитки итогов, график истории, таблицы
 по площадкам и играм, сетка предметов с фильтрами. Инвентари добавляются и удаляются прямо
 там, настройки правятся в панели «Настройки» и пишутся в тот же конфиг.
