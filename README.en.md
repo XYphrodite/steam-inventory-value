@@ -14,7 +14,40 @@ src/SteamInvValue.Web    local site: inventory list, item cards, value chart
 
 ## Installation
 
-Prebuilt binaries live on the
+One PowerShell command — it downloads the latest release, puts it where you say and adds
+that folder to `PATH`:
+
+```powershell
+irm https://raw.githubusercontent.com/XYphrodite/steam-inventory-value/main/install.ps1 | iex
+```
+
+It asks for the folder (default `%LOCALAPPDATA%\Programs\SteamInvValue`) and for what to
+install — `cli`, `web` or both. Unattended, with options:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/XYphrodite/steam-inventory-value/main/install.ps1))) `
+    -Path 'C:\Tools\steaminv' -Components cli -Quiet
+```
+
+The same can be set through `STEAMINV_INSTALL_DIR`, `STEAMINV_COMPONENTS` and
+`STEAMINV_VERSION`. Use `-NoPath` to leave `PATH` alone and `-Version v0.1.0` for a specific
+release.
+
+Uninstalling uses the same script:
+
+```powershell
+& ([scriptblock]::Create((irm <same url>))) -Uninstall          # files and the PATH entry
+& ([scriptblock]::Create((irm <same url>))) -Uninstall -Purge   # settings and history too
+```
+
+**While the repository is private**, GitHub serves neither the raw script nor the release
+assets without authentication. The installer picks a token up from `gh auth token` or
+`GITHUB_TOKEN`, but `irm` itself cannot reach the script — so either fetch it with `gh` or
+make the repository public. The installer is written in English, ASCII only: a `.ps1` with
+Cyrillic text needs a UTF-8 BOM on Windows PowerShell 5.1, and that same BOM breaks
+`irm | iex`.
+
+Manual installation works too — the archives are on the
 [Releases](https://github.com/XYphrodite/steam-inventory-value/releases) page:
 
 | Archive | What is inside |
