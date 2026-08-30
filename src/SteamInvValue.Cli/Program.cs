@@ -481,13 +481,22 @@ async Task<int> UpdateAsync()
 
         Console.WriteLine(S.UpdateFound(Updater.CurrentVersion, tag));
 
-        // Обновляем ровно то, что установлено рядом.
+        // Обновляем ровно то, что установлено рядом. Там, где на машине есть общий .NET,
+        // берём лёгкую сборку: меньше мегабайта против десятков.
+        string Pick(string full, bool runtimePresent)
+        {
+            if (!runtimePresent) return full;
+            var lite = full.Replace(".zip", "-lite.zip");
+            return assets.Any(a => a.Name == lite) ? lite : full;
+        }
+
         var targets = new List<(string Exe, string Asset)>();
         if (File.Exists(Path.Combine(dir, "steaminv.exe")))
-            targets.Add(("steaminv.exe", "steaminv-cli-win-x64.zip"));
+            targets.Add(("steaminv.exe", Pick("steaminv-cli-win-x64.zip", DotnetRuntime.HasCore())));
         if (File.Exists(Path.Combine(dir, "SteamInvValue.Web.exe")))
-            targets.Add(("SteamInvValue.Web.exe", "steaminv-web-win-x64.zip"));
-        if (targets.Count == 0) targets.Add(("steaminv.exe", "steaminv-cli-win-x64.zip"));
+            targets.Add(("SteamInvValue.Web.exe", Pick("steaminv-web-win-x64.zip", DotnetRuntime.HasAspNet())));
+        if (targets.Count == 0)
+            targets.Add(("steaminv.exe", Pick("steaminv-cli-win-x64.zip", DotnetRuntime.HasCore())));
 
         var temp = Path.Combine(Path.GetTempPath(), "steaminv-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(temp);

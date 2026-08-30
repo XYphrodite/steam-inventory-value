@@ -71,10 +71,18 @@ Windows PowerShell 5.1, а этот же BOM ломает `irm | iex`. Токе�
 Ставить можно и руками — архивы лежат на странице
 [Releases](https://github.com/XYphrodite/steam-inventory-value/releases):
 
-| Архив | Что внутри |
-|---|---|
-| `steaminv-cli-win-x64.zip` | `steaminv.exe` — консоль |
-| `steaminv-web-win-x64.zip` | `SteamInvValue.Web.exe` — локальный сайт |
+| Архив | Что внутри | Размер | Требует |
+|---|---|---|---|
+| `steaminv-cli-win-x64.zip` | `steaminv.exe` — консоль | ~32 МБ | ничего |
+| `steaminv-web-win-x64.zip` | `SteamInvValue.Web.exe` — сайт | ~44 МБ | ничего |
+| `steaminv-cli-win-x64-lite.zip` | то же | ~0,4 МБ | .NET 10 Runtime |
+| `steaminv-web-win-x64-lite.zip` | то же | ~0,5 МБ | .NET 10 Runtime (ASP.NET) |
+
+**Лёгкие сборки выбираются сами.** Установщик и `steaminv update` смотрят, установлен ли на
+машине общий .NET нужной версии, и берут `-lite`, если он есть. Разница восьмидесятикратная:
+обновление весит меньше мегабайта вместо семидесяти шести. Проверка идёт по каталогам
+`shared\Microsoft.NETCore.App` и `shared\Microsoft.AspNetCore.App`, без запуска `dotnet`;
+если рантайма нет — молча берётся обычная сборка, и ставить ничего не нужно.
 
 Сборки self-contained: .NET на машине не нужен, распаковал и запустил. Внутри по одному
 файлу — страница веб-морды зашита в сборку ресурсом. Ставить никуда не надо, положи куда

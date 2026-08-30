@@ -128,6 +128,33 @@ function Get-Download([string]$url, [string]$dest, [string]$tok) {
     }
 }
 
+# Is a shared .NET runtime of that major version installed? Decides whether we can take the
+# lite build (under a megabyte) instead of the self-contained one (tens of megabytes).
+function Test-DotnetRuntime([string]$name, [int]$major = 10) {
+    $roots = @()
+    if ($env:DOTNET_ROOT) { $roots += $env:DOTNET_ROOT }
+    $roots += (Join-Path $env:ProgramFiles 'dotnet')
+    if (${env:ProgramFiles(x86)}) { $roots += (Join-Path ${env:ProgramFiles(x86)} 'dotnet') }
+
+    foreach ($root in $roots) {
+        $dir = Join-Path (Join-Path $root 'shared') $name
+        if (-not (Test-Path $dir)) { continue }
+        foreach ($version in Get-ChildItem $dir -Directory -ErrorAction SilentlyContinue) {
+            $parsed = $null
+            if ([Version]::TryParse($version.Name, [ref]$parsed) -and $parsed.Major -ge $major) { return $true }
+        }
+    }
+    return $false
+}
+
+# Prefers the lite asset when the runtime is there and the release actually carries it.
+function Select-Asset($release, [string]$full, [bool]$runtimePresent) {
+    if (-not $runtimePresent) { return $full }
+    $lite = $full -replace '\.zip$', '-lite.zip'
+    if ($release.assets | Where-Object { $_.name -eq $lite }) { return $lite }
+    return $full
+}
+
 function Stop-Running([string]$dir) {
     Get-Process -Name 'steaminv', 'SteamInvValue.Web' -ErrorAction SilentlyContinue |
         Where-Object { $_.Path -and $_.Path.StartsWith($dir, 'OrdinalIgnoreCase') } |
@@ -210,9 +237,18 @@ $what = if ($Components) { $Components }
         else { Ask 'What to install: cli / web / both' 'both' }
 if ($what -notin 'cli', 'web', 'both') { throw "Unknown component set '$what'. Expected cli, web or both." }
 
+$hasCore = Test-DotnetRuntime 'Microsoft.NETCore.App'
+$hasAspNet = Test-DotnetRuntime 'Microsoft.AspNetCore.App'
+
 $wanted = @()
-if ($what -in 'cli', 'both') { $wanted += @{ Asset = 'steaminv-cli-win-x64.zip'; Exe = 'steaminv.exe' } }
-if ($what -in 'web', 'both') { $wanted += @{ Asset = 'steaminv-web-win-x64.zip'; Exe = 'SteamInvValue.Web.exe' } }
+if ($what -in 'cli', 'both') {
+    $wanted += @{ Asset = (Select-Asset $release 'steaminv-cli-win-x64.zip' $hasCore); Exe = 'steaminv.exe' }
+}
+if ($what -in 'web', 'both') {
+    $wanted += @{ Asset = (Select-Asset $release 'steaminv-web-win-x64.zip' $hasAspNet); Exe = 'SteamInvValue.Web.exe' }
+}
+
+if ($wanted.Asset -match '-lite') { Say 'Found .NET 10, taking the lite build' }
 
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 Say "Installing into $dir"

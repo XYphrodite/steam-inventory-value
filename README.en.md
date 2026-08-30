@@ -76,10 +76,19 @@ or `GITHUB_TOKEN`.
 Manual installation works too — the archives are on the
 [Releases](https://github.com/XYphrodite/steam-inventory-value/releases) page:
 
-| Archive | What is inside |
-|---|---|
-| `steaminv-cli-win-x64.zip` | `steaminv.exe` — the console app |
-| `steaminv-web-win-x64.zip` | `SteamInvValue.Web.exe` — the local site |
+| Archive | What is inside | Size | Requires |
+|---|---|---|---|
+| `steaminv-cli-win-x64.zip` | `steaminv.exe` — the console app | ~32 MB | nothing |
+| `steaminv-web-win-x64.zip` | `SteamInvValue.Web.exe` — the local site | ~44 MB | nothing |
+| `steaminv-cli-win-x64-lite.zip` | the same | ~0.4 MB | .NET 10 Runtime |
+| `steaminv-web-win-x64-lite.zip` | the same | ~0.5 MB | .NET 10 Runtime (ASP.NET) |
+
+**The lite builds are picked automatically.** The installer and `steaminv update` check whether
+a shared .NET of the right version is installed and take `-lite` when it is. The difference is
+eighty-fold: an update weighs under a megabyte instead of seventy-six. The check looks at the
+`shared\Microsoft.NETCore.App` and `shared\Microsoft.AspNetCore.App` folders, without running
+`dotnet`; with no runtime present the regular build is taken silently and nothing has to be
+installed.
 
 The builds are self-contained: no .NET needed on the machine, just unpack and run. Each
 archive holds a single file — the web page is embedded into the assembly as a resource.

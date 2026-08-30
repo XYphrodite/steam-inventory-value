@@ -37,6 +37,20 @@ jobs:
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
           -p:Version=${{ env.VERSION }} -o out/web
 
+      # Лёгкие сборки без встроенного .NET: меньше мегабайта против десятков. Ставятся
+      # только там, где уже есть общий рантайм, — установщик и обновление проверяют сами.
+      - name: Publish CLI (lite)
+        run: >
+          dotnet publish src/SteamInvValue.Cli -c Release -r win-x64 --self-contained false
+          -p:PublishSingleFile=true -p:DebugType=none
+          -p:Version=${{ env.VERSION }} -o out/cli-lite
+
+      - name: Publish Web (lite)
+        run: >
+          dotnet publish src/SteamInvValue.Web -c Release -r win-x64 --self-contained false
+          -p:PublishSingleFile=true -p:DebugType=none
+          -p:Version=${{ env.VERSION }} -o out/web-lite
+
       # В архив кладём только exe: страница веб-морды зашита в сборку ресурсом.
       - name: Pack
         shell: pwsh
@@ -44,6 +58,8 @@ jobs:
           New-Item -ItemType Directory -Force out/zips | Out-Null
           Compress-Archive -Path out/cli/steaminv.exe -DestinationPath out/zips/steaminv-cli-win-x64.zip -Force
           Compress-Archive -Path out/web/SteamInvValue.Web.exe -DestinationPath out/zips/steaminv-web-win-x64.zip -Force
+          Compress-Archive -Path out/cli-lite/steaminv.exe -DestinationPath out/zips/steaminv-cli-win-x64-lite.zip -Force
+          Compress-Archive -Path out/web-lite/SteamInvValue.Web.exe -DestinationPath out/zips/steaminv-web-win-x64-lite.zip -Force
 
       # Хеши публикуются в описании релиза: установщик и steaminv update сверяют по ним
       # скачанное. Ключей и отдельной инфраструктуры это не требует, а подмену файла ловит.
@@ -53,9 +69,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create $env:GITHUB_REF_NAME `
-            out/zips/steaminv-cli-win-x64.zip `
-            out/zips/steaminv-web-win-x64.zip `
+          gh release create $env:GITHUB_REF_NAME (Get-ChildItem out/zips/*.zip | ForEach-Object FullName) `
             --title $env:GITHUB_REF_NAME --generate-notes
 
           $lines = Get-ChildItem out/zips/*.zip | ForEach-Object {
@@ -64,7 +78,9 @@ jobs:
           }
 
           $body = gh release view $env:GITHUB_REF_NAME --json body -q .body
-          $notes = @($body, '', '## Checksums', '') + $lines -join "`n"
+          $notes = @($body, '', '## Checksums', '',
+                     'Archives with `-lite` need .NET 10 Runtime installed; the others need nothing.',
+                     '') + $lines -join "`n"
 
           $file = Join-Path $env:RUNNER_TEMP 'notes.md'
           Set-Content -Path $file -Value $notes -Encoding utf8
