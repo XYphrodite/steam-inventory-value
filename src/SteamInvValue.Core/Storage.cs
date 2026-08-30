@@ -39,10 +39,15 @@ public sealed class Storage
     };
 
     private string ReportPath(string id) => Path.Combine(_root, "reports", $"{id}.json");
+    private string PreviousReportPath(string id) => Path.Combine(_root, "reports", $"{id}.prev.json");
     private string HistoryPath(string id) => Path.Combine(_root, "history", $"{id}.jsonl");
 
     public void SaveReport(string id, Report report)
     {
+        // Прошлый отчёт не выбрасываем: без него не сказать, из-за чего изменилась сумма.
+        if (File.Exists(ReportPath(id)))
+            File.Copy(ReportPath(id), PreviousReportPath(id), overwrite: true);
+
         File.WriteAllText(ReportPath(id), JsonSerializer.Serialize(report, Json));
 
         var snap = new Snapshot(
@@ -52,11 +57,15 @@ public sealed class Storage
         File.AppendAllText(HistoryPath(id), JsonSerializer.Serialize(snap, Json) + Environment.NewLine);
     }
 
-    public Report? LoadReport(string id)
+    public Report? LoadReport(string id) => Load(ReportPath(id));
+
+    /// <summary>Отчёт предыдущего прогона — для сравнения замеров.</summary>
+    public Report? LoadPreviousReport(string id) => Load(PreviousReportPath(id));
+
+    private static Report? Load(string path)
     {
-        var p = ReportPath(id);
-        if (!File.Exists(p)) return null;
-        try { return JsonSerializer.Deserialize<Report>(File.ReadAllText(p), Json); }
+        if (!File.Exists(path)) return null;
+        try { return JsonSerializer.Deserialize<Report>(File.ReadAllText(path), Json); }
         catch { return null; }
     }
 
@@ -87,7 +96,7 @@ public sealed class Storage
 
     public void Forget(string id)
     {
-        foreach (var p in new[] { ReportPath(id), HistoryPath(id) })
+        foreach (var p in new[] { ReportPath(id), PreviousReportPath(id), HistoryPath(id) })
             if (File.Exists(p)) File.Delete(p);
     }
 }

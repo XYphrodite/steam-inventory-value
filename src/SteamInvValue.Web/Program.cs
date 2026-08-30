@@ -151,6 +151,18 @@ app.MapGet("/api/report/{id}", (string id) =>
 
 app.MapGet("/api/history/{id}", (string id, int? limit) => Results.Ok(storage.History(id, limit ?? 200)));
 
+// Что изменилось между двумя последними замерами: состав отдельно, цены отдельно.
+app.MapGet("/api/diff/{id}", async (string id) =>
+{
+    var current = storage.LoadReport(id);
+    var previous = storage.LoadPreviousReport(id);
+    if (current is null || previous is null) return Results.NoContent();
+
+    var fx = new CurrencyService(new FileCache());
+    await fx.LoadAsync();
+    return Results.Ok(ReportDiff.Compare(previous, current, fx));
+});
+
 app.MapGet("/api/jobs/{id}", (string id) =>
     jobs.TryGetValue(id, out var job)
         ? Results.Ok(new { job.Status, job.Error, Log = job.Lines })

@@ -120,6 +120,31 @@ public static class T
         $"                    Steam не опросил {skipped} имён (лимит) — «Кошелёк Steam» занижен, сравнивай по проценту выше.",
         $"                    Steam did not query {skipped} names (rate limit) — \"Steam wallet\" is understated, use the percentage above.");
 
+    // --- сравнение замеров ---
+    public static string DiffHeader(DateTimeOffset from, DateTimeOffset to) => P(
+        $"ЧТО ИЗМЕНИЛОСЬ с {from:dd.MM HH:mm} по {to:dd.MM HH:mm}",
+        $"WHAT CHANGED from {from:dd.MM HH:mm} to {to:dd.MM HH:mm}");
+
+    public static string DiffTotals(decimal before, decimal after, decimal delta) => P(
+        $"  Было {before:N0} ₽, стало {after:N0} ₽ — изменение {delta:+#,##0;-#,##0;0} ₽",
+        $"  Was {before:N0} RUB, now {after:N0} RUB — change of {delta:+#,##0;-#,##0;0} RUB");
+
+    public static string DiffSplit(decimal items, decimal prices) => P(
+        $"  Из них {items:+#,##0;-#,##0;0} ₽ из-за состава инвентаря и {prices:+#,##0;-#,##0;0} ₽ из-за цен",
+        $"  Of that {items:+#,##0;-#,##0;0} RUB from inventory changes and {prices:+#,##0;-#,##0;0} RUB from prices");
+
+    public static string DiffNothing => P(
+        "Между замерами ничего не изменилось.", "Nothing changed between the two measurements.");
+
+    public static string DiffNoPrevious => P(
+        "Не с чем сравнивать: это первый замер. Запусти оценку ещё раз позже.",
+        "Nothing to compare with: this is the first measurement. Run the valuation again later.");
+
+    public static string DiffAppeared(int n) => P($"  ПОЯВИЛОСЬ ({n})", $"  APPEARED ({n})");
+    public static string DiffGone(int n) => P($"  ПРОПАЛО ({n})", $"  GONE ({n})");
+    public static string DiffCount(int n) => P($"  ИЗМЕНИЛОСЬ КОЛИЧЕСТВО ({n})", $"  COUNT CHANGED ({n})");
+    public static string DiffPrice(int n) => P($"  ПОДВИНУЛИСЬ ЦЕНЫ ({n})", $"  PRICES MOVED ({n})");
+
     public static string SellPlanHeader(int positions, decimal share) => P(
         $"ЧТО ПРОДАВАТЬ — {positions} позиций дают {share:N0}% денег",
         $"WHAT TO SELL — {positions} positions give {share:N0}% of the money");
@@ -179,6 +204,7 @@ steaminv — оценка инвентарей Steam. Ссылки хранят�
   steaminv rm <ключ>
   steaminv list                  что под наблюдением и на сколько
   steaminv history [ключ]        как менялась стоимость от запуска к запуску
+  steaminv diff [ключ]           что изменилось между двумя последними замерами
   steaminv config                где лежит конфиг и что в нём
   steaminv web                   открыть веб-панель на http://localhost:5188
   steaminv update                скачать и поставить свежий релиз
@@ -216,6 +242,7 @@ steaminv — Steam inventory valuation. Profile links live in the config and are
   steaminv rm <key>
   steaminv list                  what is watched and what it is worth
   steaminv history [key]         how the value changed from run to run
+  steaminv diff [key]            what changed between the last two measurements
   steaminv config                where the config lives and what is in it
   steaminv web                   open the web panel at http://localhost:5188
   steaminv update                download and install the latest release

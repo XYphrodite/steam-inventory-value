@@ -18,7 +18,7 @@ int? budgetOpt = null, delayOpt = null, limitOpt = null;
 string? langOpt = null, proxyOpt = null, cookieOpt = null, uiOpt = null;
 var top = 20;
 
-var commands = new[] { "add", "rm", "remove", "list", "history", "config", "run", "all", "update", "web" };
+var commands = new[] { "add", "rm", "remove", "list", "history", "config", "run", "all", "update", "web", "diff" };
 var helpRequested = false;
 var checkRequested = false;
 bool? updateCheckOpt = null;
@@ -99,6 +99,7 @@ try
         "rm" or "remove" => Remove(),
         "list" => List(),
         "history" => ShowHistory(),
+        "diff" => await ShowDiffAsync(),
         "config" => ShowConfig(),
         _ => await Run(),
     };
@@ -303,6 +304,63 @@ async Task Export(Report report)
         await File.WriteAllTextAsync(csvOut, sb.ToString(), Encoding.UTF8);
         Console.Error.WriteLine(T.CsvWritten(Path.GetFullPath(csvOut)));
     }
+}
+
+/// <summary>
+/// Что изменилось между последними двумя замерами. История говорит «сумма выросла», а
+/// это отвечает, из-за чего именно: пришли вещи, ушли вещи или сдвинулись цены.
+/// </summary>
+async Task<int> ShowDiffAsync()
+{
+    var profiles = target is null
+        ? config.Profiles
+        : config.Find(target) is { } one ? [one] : new List<TrackedProfile>();
+
+    if (profiles.Count == 0) { Console.Error.WriteLine(T.NothingToShow); return 1; }
+
+    var fx = new CurrencyService(new FileCache());
+    await fx.LoadAsync(cts.Token);
+
+    foreach (var profile in profiles)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"{profile.Name} ({profile.Id})");
+
+        var current = storage.LoadReport(profile.Id);
+        var previous = storage.LoadPreviousReport(profile.Id);
+        if (current is null || previous is null) { Console.WriteLine(T.DiffNoPrevious); continue; }
+
+        var diff = ReportDiff.Compare(previous, current, fx);
+
+        Console.WriteLine(T.DiffHeader(diff.From, diff.To));
+        Console.WriteLine(T.DiffTotals(diff.TotalBefore.Rub, diff.TotalAfter.Rub, diff.Delta.Rub));
+        Console.WriteLine(T.DiffSplit(diff.DeltaFromItems.Rub, diff.DeltaFromPrices.Rub));
+
+        if (diff.IsEmpty) { Console.WriteLine(T.DiffNothing); continue; }
+
+        void Section(string header, IReadOnlyList<DiffLine> lines, Func<DiffLine, string> right)
+        {
+            if (lines.Count == 0) return;
+            Console.WriteLine();
+            Console.WriteLine(header);
+            foreach (var line in lines.Take(10))
+                Console.WriteLine($"    {Trim(line.Name, 42),-42}{right(line)}");
+        }
+
+        var rate = current.UsdRub;
+        Section(T.DiffAppeared(diff.Appeared.Count), diff.Appeared,
+            l => $"{l.CountAfter,4} шт{l.ValueAfterUsd * rate,9:N0} {Rub()}");
+        Section(T.DiffGone(diff.Gone.Count), diff.Gone,
+            l => $"{l.CountBefore,4} шт{-l.ValueBeforeUsd * rate,9:N0} {Rub()}");
+        Section(T.DiffCount(diff.CountChanged.Count), diff.CountChanged,
+            l => $"{l.CountBefore} -> {l.CountAfter} шт{l.DeltaUsd * rate,9:N0} {Rub()}");
+        Section(T.DiffPrice(diff.PriceChanged.Count), diff.PriceChanged,
+            l => $"{l.PricePercent,7:+0.0;-0.0}%{l.DeltaUsd * rate,9:N0} {Rub()}");
+
+        Console.WriteLine();
+    }
+
+    return 0;
 }
 
 // ---- обновления ---------------------------------------------------------------------------

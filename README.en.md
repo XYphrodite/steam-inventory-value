@@ -150,8 +150,21 @@ the `--config` flag or the `STEAMINV_CONFIG` environment variable.
   `0` means manual only.
 
 Results are stored next to the config: `reports/<steamid>.json` holds the last full report
-(the web UI opens it instantly without touching Steam), and `history/<steamid>.jsonl` holds
-one line per run, which is what the chart and the "change" column are built from.
+(the web UI opens it instantly without touching Steam), `reports/<steamid>.prev.json` holds the
+previous one for comparison, and `history/<steamid>.jsonl` holds one line per run, which is
+what the chart and the "change" column are built from.
+
+## What changed between measurements
+
+```
+steaminv diff            # across all inventories
+steaminv diff "Main"     # one of them
+```
+
+The history says "the total grew by 300 roubles"; `diff` says why: what appeared, what is gone,
+where the count changed and how prices moved. The change is split into two parts — **from the
+inventory** and **from prices** — and those two always add up to the total change. The web
+panel shows the same in the "What changed" card.
 
 ## One-off valuation
 
