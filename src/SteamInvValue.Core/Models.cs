@@ -39,7 +39,7 @@ public sealed record Quote(string Provider, decimal ListUsd, decimal PayoutUsd);
 public sealed class PricedItem
 {
     public required InventoryItem Item { get; init; }
-    public List<Quote> Quotes { get; } = new();
+    public List<Quote> Quotes { get; set; } = [];
 
     public Quote? Best => Quotes.Count == 0 ? null : Quotes.MaxBy(q => q.PayoutUsd);
     public Quote? Steam => Quotes.FirstOrDefault(q => q.Provider == Marketplaces.Steam);
@@ -91,9 +91,9 @@ public sealed class Report
     public Money SteamNet { get; set; } = new(0, 0, 0, 0);
     public Money SteamGross { get; set; } = new(0, 0, 0, 0);
 
-    public List<ProviderTotal> ByProvider { get; } = new();
-    public List<AppTotal> ByApp { get; } = new();
-    public List<PricedItem> Items { get; } = new();
-    public List<string> Notes { get; } = new();
+    public List<ProviderTotal> ByProvider { get; set; } = [];
+    public List<AppTotal> ByApp { get; set; } = [];
+    public List<PricedItem> Items { get; set; } = [];
+    public List<string> Notes { get; set; } = [];
     public decimal UsdRub { get; set; }
 }
