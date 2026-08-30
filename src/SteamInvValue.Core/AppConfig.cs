@@ -32,7 +32,10 @@ public sealed class AppConfig
 {
     public List<TrackedProfile> Profiles { get; set; } = [];
     public SteamOptions Steam { get; set; } = new();
+    /// <summary>Язык названий предметов, который запрашивается у Steam: english / russian.</summary>
     public string Language { get; set; } = "english";
+    /// <summary>Язык интерфейса приложения: ru / en. Пусто — берётся язык системы.</summary>
+    public string? InterfaceLanguage { get; set; }
     /// <summary>Автообновление в веб-режиме, минут. 0 — не обновлять само.</summary>
     public int AutoRefreshMinutes { get; set; }
     /// <summary>http://user:pass@host:port или socks5://host:port</summary>
@@ -68,7 +71,7 @@ public sealed class AppConfig
         if (File.Exists(path))
         {
             try { cfg = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(path), Json) ?? new AppConfig(); }
-            catch (Exception ex) { throw new InvalidOperationException($"Конфиг {path} не читается: {ex.Message}"); }
+            catch (Exception ex) { throw new InvalidOperationException(S.ConfigUnreadable(path, ex.Message)); }
         }
         else
         {
@@ -82,8 +85,16 @@ public sealed class AppConfig
         return cfg;
     }
 
-    /// <summary>Прокидывает прокси и cookie в HTTP-клиент — делается один раз при входе в приложение.</summary>
-    public void Apply() => Http.Configure(Proxy, Cookie);
+    /// <summary>
+    /// Применяет настройки процесса: язык интерфейса, прокси и cookie для Steam.
+    /// Вызывается при входе в приложение и после правки настроек.
+    /// </summary>
+    public void Apply()
+    {
+        InterfaceLanguage = Loc.Normalize(InterfaceLanguage);
+        Loc.Lang = InterfaceLanguage;
+        Http.Configure(Proxy, Cookie);
+    }
 
     public void Save()
     {

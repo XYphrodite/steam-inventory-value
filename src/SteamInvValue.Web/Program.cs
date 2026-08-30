@@ -57,6 +57,7 @@ object BuildState()
             config.Steam.Budget,
             config.Steam.DelayMs,
             config.Language,
+            InterfaceLanguage = Loc.Lang,
             config.AutoRefreshMinutes,
             HasProxy = Http.HasProxy,
             HasCookie = Http.HasCookie,
@@ -71,7 +72,7 @@ object BuildState()
 app.MapPost("/api/profiles", async (AddRequest req, CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(req.Profile))
-        return Results.BadRequest(new { error = "Не указана ссылка на профиль" });
+        return Results.BadRequest(new { error = Loc.Pick("Не указана ссылка на профиль", "No profile link given") });
     try
     {
         var p = await config.AddAsync(req.Profile, req.Name, req.Apps, ct);
@@ -136,6 +137,7 @@ app.MapPut("/api/settings", (SettingsRequest req) =>
     if (req.SteamBudget is not null) config.Steam.Budget = Math.Max(0, req.SteamBudget.Value);
     if (req.SteamDelayMs is not null) config.Steam.DelayMs = Math.Max(0, req.SteamDelayMs.Value);
     if (!string.IsNullOrWhiteSpace(req.Language)) config.Language = req.Language;
+    if (!string.IsNullOrWhiteSpace(req.InterfaceLanguage)) config.InterfaceLanguage = req.InterfaceLanguage;
     if (req.AutoRefreshMinutes is not null) config.AutoRefreshMinutes = Math.Max(0, req.AutoRefreshMinutes.Value);
     if (req.Proxy is not null) config.Proxy = string.IsNullOrWhiteSpace(req.Proxy) ? null : req.Proxy;
     if (req.Cookie is not null) config.Cookie = string.IsNullOrWhiteSpace(req.Cookie) ? null : req.Cookie;
@@ -200,9 +202,10 @@ var timer = new Timer(_ =>
 
 var url = Environment.GetEnvironmentVariable("STEAMINV_URL") ?? "http://localhost:5188";
 app.Urls.Add(url);
-Console.WriteLine($"Конфиг: {config.Path}");
-Console.WriteLine($"Инвентарей под наблюдением: {config.Profiles.Count}");
-Console.WriteLine($"Открой {url}");
+Console.WriteLine(Loc.Pick($"Конфиг: {config.Path}", $"Config: {config.Path}"));
+Console.WriteLine(Loc.Pick($"Инвентарей под наблюдением: {config.Profiles.Count}",
+                           $"Inventories watched: {config.Profiles.Count}"));
+Console.WriteLine(Loc.Pick($"Открой {url}", $"Open {url}"));
 app.Run();
 GC.KeepAlive(timer);
 
@@ -210,7 +213,7 @@ sealed record AddRequest(string Profile, string? Name, int[]? Apps);
 
 sealed record SettingsRequest(
     bool? SteamEnabled, int? SteamBudget, int? SteamDelayMs,
-    string? Language, int? AutoRefreshMinutes, string? Proxy, string? Cookie);
+    string? Language, string? InterfaceLanguage, int? AutoRefreshMinutes, string? Proxy, string? Cookie);
 
 sealed class Job
 {

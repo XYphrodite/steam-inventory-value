@@ -57,9 +57,7 @@ public sealed partial class SteamMarketProvider(
         var toQuery = pending.Take(Math.Max(0, _remaining)).ToList();
         _remaining -= toQuery.Count;
         Skipped += pending.Count - toQuery.Count;
-        _log($"  Steam: из кэша {result.Count}, опрашиваю {toQuery.Count}" +
-             (Skipped > 0 ? $", отложено {Skipped}" : "") +
-             $" (~{toQuery.Count * delayMs / 60000.0:0.0} мин)");
+        _log(S.SteamPlan(result.Count, toQuery.Count, Skipped, toQuery.Count * delayMs / 60000.0));
 
         var consecutiveFailures = 0;
         var done = 0;
@@ -74,7 +72,7 @@ public sealed partial class SteamMarketProvider(
                 if (++consecutiveFailures >= 5)
                 {
                     Skipped += toQuery.Count - done;
-                    _log("  Steam: подряд 5 неудач — прекращаю опрос, остальное возьмётся в следующий раз из кэша.");
+                    _log(S.SteamGivingUp);
                     break;
                 }
             }
@@ -87,7 +85,7 @@ public sealed partial class SteamMarketProvider(
             }
 
             done++;
-            if (done % 25 == 0) _log($"  Steam: {done}/{toQuery.Count}");
+            if (done % 25 == 0) _log(S.SteamProgress(done, toQuery.Count));
             await Task.Delay(delayMs, ct);
         }
 
@@ -107,7 +105,7 @@ public sealed partial class SteamMarketProvider(
             if ((int)resp.StatusCode == 429)
             {
                 var wait = TimeSpan.FromSeconds(15 * Math.Pow(2, attempt));
-                _log($"  Steam: 429, пауза {wait.TotalSeconds:0}с");
+                _log(S.SteamThrottled(wait.TotalSeconds));
                 await Task.Delay(wait, ct);
                 continue;
             }

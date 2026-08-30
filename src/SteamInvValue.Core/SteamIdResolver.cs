@@ -37,7 +37,7 @@ public static partial class SteamIdResolver
         var xml = await Http.Client.GetStringAsync(xmlUrl, ct);
         var idMatch = Id64Tag().Match(xml);
         if (!idMatch.Success)
-            throw new InvalidOperationException($"Не удалось определить SteamID по '{input}'. Профиль не найден или скрыт.");
+            throw new InvalidOperationException(S.CannotResolve(input));
 
         var resolved = idMatch.Groups[1].Value;
         var persona = PersonaTag().Match(xml) is { Success: true } p ? p.Groups[1].Value : null;

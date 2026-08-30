@@ -29,9 +29,9 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
     {
         var opt = options ?? new ValuationOptions();
 
-        _log("Определяю профиль…");
+        _log(S.ResolvingProfile);
         var profile = await SteamIdResolver.ResolveAsync(profileInput, ct);
-        _log($"SteamID64 {profile.SteamId64} ({profile.PersonaName ?? "без ника"})");
+        _log($"SteamID64 {profile.SteamId64} ({profile.PersonaName ?? S.NoPersona})");
 
         var report = new Report
         {
@@ -48,7 +48,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         try
         {
             discovered = await inv.GetContextsAsync(profile.SteamId64, ct);
-            if (discovered.Count == 0) why = "страница профиля вернула пустой список";
+            if (discovered.Count == 0) why = S.EmptyAppList;
         }
         catch (Exception ex)
         {
@@ -58,7 +58,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
 
         if (discovered.Count == 0)
         {
-            _log($"Список игр со страницы профиля не получен ({why}) — перебираю известные игры.");
+            _log(S.ProbingApps(why ?? ""));
             discovered = await inv.ProbeContextsAsync(profile.SteamId64, opt.OnlyApps, ct);
             probed = true;
         }
@@ -66,22 +66,18 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         // Перебор знает только зашитый список игр, поэтому список инвентарей может быть неполным —
         // это обязано быть видно в отчёте, а не только в логе.
         if (probed)
-            report.Notes.Add(
-                $"Список игр получен перебором {KnownApps.Count} известных инвентарей, а не со страницы " +
-                $"профиля ({why}). Инвентари других игр в отчёт не попали — перезапусти, когда Steam " +
-                "перестанет ограничивать запросы.");
+            report.Notes.Add(S.ProbedNote(KnownApps.Count, why ?? ""));
 
         if (discovered.Count == 0)
-            throw new InvalidOperationException(
-                "Инвентарь пуст, скрыт настройками приватности или Steam временно ограничил запросы (429). " +
-                "Попробуй через 10-15 минут.");
+            throw new InvalidOperationException(S.NothingFound);
 
         var contexts = discovered
             .Where(c => opt.OnlyApps is null || opt.OnlyApps.Contains(c.AppId))
             .OrderByDescending(c => c.AssetCount)
             .ToList();
 
-        _log($"Найдено инвентарей: {contexts.Count} ({string.Join(", ", contexts.Select(c => $"{c.AppName}:{c.AssetCount}"))})");
+        _log(S.FoundInventories(contexts.Count,
+            string.Join(", ", contexts.Select(c => $"{c.AppName}:{c.AssetCount}"))));
 
         var appNames = new Dictionary<int, string>();
         var all = new List<InventoryItem>();
@@ -95,7 +91,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
 
             if (cached is { Count: > 0 })
             {
-                _log($"  {ctx.AppName}: взят из кэша, {cached.Sum(i => i.Count)} шт");
+                _log(S.FromCache(ctx.AppName, cached.Sum(i => i.Count)));
                 all.AddRange(cached);
                 continue; // Steam не трогаем — именно из-за лимита 429 на /inventory/
             }
@@ -108,7 +104,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
             }
             catch (Exception ex)
             {
-                report.Notes.Add($"{ctx.AppName}: не прочитан ({ex.Message})");
+                report.Notes.Add(S.NotRead(ctx.AppName, ex.Message));
             }
             await Task.Delay(1200, ct);
         }
@@ -148,7 +144,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
 
                 try
                 {
-                    _log($"{appNames.GetValueOrDefault(appId, appId.ToString())} → {provider.Name}: {names.Count} имён");
+                    _log(S.AskingProvider(appNames.GetValueOrDefault(appId, appId.ToString()), provider.Name, names.Count));
                     var prices = await provider.GetPricesUsdAsync(appId, names, ct);
                     foreach (var p in group)
                     {
@@ -169,8 +165,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
 
         report.SteamSkipped = steam.Skipped;
         if (steam.Skipped > 0)
-            report.Notes.Add($"Steam: {steam.Skipped} имён не опрошено (лимит запросов). " +
-                             "Запусти ещё раз — кэш накопится и покрытие вырастет.");
+            report.Notes.Add(S.SteamSkippedNote(steam.Skipped));
 
         // --- итоги ---
         var fx = new CurrencyService(_cache);
@@ -184,8 +179,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         report.UnsellablePositions = unsellable.Count;
         report.UnsellableCount = unsellable.Sum(p => p.Item.Count);
         if (report.UnsellablePositions > 0 && !opt.CountUnsellable)
-            report.Notes.Add($"{report.UnsellableCount} шт ({report.UnsellablePositions} позиций) продать нельзя — " +
-                             "ни обмена, ни маркета; в суммы не входят.");
+            report.Notes.Add(S.UnsellableNote(report.UnsellableCount, report.UnsellablePositions));
 
         report.BestSplit = fx.Convert(priced.Sum(p => p.BestTotalUsd));
 

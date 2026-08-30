@@ -20,8 +20,8 @@ public sealed class SteamInventoryClient(Action<string>? log = null)
         {
             if (html.Contains("This profile is private", StringComparison.OrdinalIgnoreCase) ||
                 html.Contains("профиль скрыт", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Профиль или инвентарь закрыт настройками приватности.");
-            throw new InvalidOperationException("Не удалось прочитать список инвентарей со страницы профиля.");
+                throw new InvalidOperationException(S.ProfilePrivate);
+            throw new InvalidOperationException(S.CannotReadAppList);
         }
 
         var result = new List<InventoryContext>();
@@ -98,7 +98,7 @@ public sealed class SteamInventoryClient(Action<string>? log = null)
             page++;
             var more = root.TryGetProperty("more_items", out var mi) && mi.GetInt32() == 1;
             start = root.TryGetProperty("last_assetid", out var la) ? la.GetString() : null;
-            _log($"  {ctx.AppName}: страница {page}, предметов {items.Values.Sum(i => i.Count)}");
+            _log(S.PageRead(ctx.AppName, page, items.Values.Sum(i => i.Count)));
             if (!more || start is null) break;
             await Task.Delay(1200, ct);
         }
@@ -116,12 +116,12 @@ public sealed class SteamInventoryClient(Action<string>? log = null)
             if ((int)resp.StatusCode == 429 || (int)resp.StatusCode >= 500)
             {
                 var wait = TimeSpan.FromSeconds(5 * Math.Pow(2, attempt));
-                _log($"  Steam ответил {(int)resp.StatusCode}, жду {wait.TotalSeconds:0}с");
+                _log(S.SteamSaid((int)resp.StatusCode, wait.TotalSeconds));
                 await Task.Delay(wait, ct);
                 continue;
             }
             if ((int)resp.StatusCode == 403)
-                throw new InvalidOperationException("Инвентарь закрыт (403).");
+                throw new InvalidOperationException(S.InventoryForbidden);
             return null;
         }
         return null;
@@ -230,7 +230,7 @@ public sealed class SteamInventoryClient(Action<string>? log = null)
                 if (!doc.RootElement.TryGetProperty("total_inventory_count", out var t)) continue;
                 var count = t.GetInt32();
                 if (count <= 0) continue;
-                _log($"  найден инвентарь {name}: {count} шт");
+                _log(S.FoundInventory(name, count));
                 found.Add(new InventoryContext(appId, name, ctxId, count));
             }
             catch { /* пустой/чужой ответ — пропускаем */ }
