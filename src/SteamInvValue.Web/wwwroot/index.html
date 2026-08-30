@@ -229,14 +229,22 @@ function render() {
   const b = r.bestSplit, s = r.steamNet, g = r.steamGross;
   const cmp = r.bestWhereSteamKnown || b;
   const diff = (s.usd > 0 && r.steamCovered > 0) ? ((cmp.usd / s.usd - 1) * 100) : 0;
-  const partial = r.steamCovered < r.pricedItems;
+  const partial = (r.steamSkipped || 0) > 0;
+
+  const cash = r.bestCash || b, mixCash = r.mixedCashPart || b, mixWallet = r.mixedWalletPart || {rub: 0, usd: 0};
+  const steamOnly = r.steamOnly || {rub: 0, usd: 0};
 
   el('tiles').innerHTML =
-    tile('Лучшая площадка, живые деньги', money(b.rub, 0) + ' ₽', money(b.usd) + ' $ · ' + money(b.usdt) + ' USDT · ' + money(b.btc, 8) + ' BTC') +
-    tile('Steam, на руки', money(s.rub, 0) + ' ₽', money(s.usd) + ' $ · только внутри кошелька Steam') +
+    tile('Живые деньги', money(cash.rub, 0) + ' ₽',
+         money(cash.usd) + ' $ · ' + money(cash.usdt) + ' USDT · ' + money(cash.btc, 8) + ' BTC · только сторонние площадки') +
+    tile('Кошелёк Steam', money(s.rub, 0) + ' ₽', money(s.usd) + ' $ · весь инвентарь на Steam-маркете, вывести нельзя') +
+    tile('Максимум всего', money(b.rub, 0) + ' ₽',
+         money(mixCash.rub, 0) + ' ₽ живыми + ' + money(mixWallet.rub, 0) + ' ₽ в кошелёк' +
+         (steamOnly.rub > 0 ? ' · ' + money(steamOnly.rub, 0) + ' ₽ только через Steam' : '')) +
     tile('Steam, ценник для покупателя', money(g.rub, 0) + ' ₽', money(g.usd) + ' $ · до комиссии 15%') +
     tile('Выгода против Steam', (diff >= 0 ? '+' : '') + money(diff, 1) + ' %',
-         'по ' + r.steamCovered + ' из ' + r.pricedItems + ' позиций' + (partial ? ' · Steam опрошен не полностью' : '')) +
+         'по ' + r.steamCovered + ' из ' + r.pricedItems + ' позиций' +
+         (partial ? ' · Steam не опросил ' + r.steamSkipped + ' имён' : '')) +
     tile('Предметов', r.totalItems + ' шт', r.uniqueItems + ' уникальных · с ценой ' + r.pricedItems + ', без цены ' + r.unpricedItems) +
     tile('Ликвидность', r.tradableItems + ' шт торгуемых', r.marketableItems + ' шт продаваемых на маркете') +
     tile('Продать нельзя', (r.unsellableCount || 0) + ' шт',

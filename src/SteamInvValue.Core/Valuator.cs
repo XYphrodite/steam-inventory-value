@@ -167,6 +167,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
             }
         }
 
+        report.SteamSkipped = steam.Skipped;
         if (steam.Skipped > 0)
             report.Notes.Add($"Steam: {steam.Skipped} имён не опрошено (лимит запросов). " +
                              "Запусти ещё раз — кэш накопится и покрытие вырастет.");
@@ -187,6 +188,27 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
                              "ни обмена, ни маркета; в суммы не входят.");
 
         report.BestSplit = fx.Convert(priced.Sum(p => p.BestTotalUsd));
+
+        // Steam платит в кошелёк, остальные — живыми деньгами, поэтому максимум разбивается надвое.
+        decimal cash = 0m, mixCash = 0m, mixWallet = 0m, steamOnly = 0m;
+        foreach (var p in priced)
+        {
+            var n = p.Item.Count;
+            var bestCash = p.BestCash;
+            if (bestCash is not null) cash += bestCash.PayoutUsd * n;
+
+            if (p.Best is { } best)
+            {
+                if (best.Provider == Marketplaces.Steam) mixWallet += best.PayoutUsd * n;
+                else mixCash += best.PayoutUsd * n;
+            }
+
+            if (bestCash is null && p.Steam is { } steamOnlyQuote) steamOnly += steamOnlyQuote.PayoutUsd * n;
+        }
+        report.BestCash = fx.Convert(cash);
+        report.MixedCashPart = fx.Convert(mixCash);
+        report.MixedWalletPart = fx.Convert(mixWallet);
+        report.SteamOnly = fx.Convert(steamOnly);
         report.SteamNet = fx.Convert(priced.Sum(p => p.SteamTotalUsd));
         report.SteamGross = fx.Convert(priced.Sum(p => (p.Steam?.ListUsd ?? 0m) * p.Item.Count));
 

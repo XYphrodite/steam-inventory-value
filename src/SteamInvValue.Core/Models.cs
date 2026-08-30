@@ -25,6 +25,13 @@ public sealed class InventoryItem
         : $"https://community.cloudflare.steamstatic.com/economy/image/{IconUrl}/128fx128f";
 }
 
+/// <summary>Имена площадок, которые различает расчёт.</summary>
+public static class Marketplaces
+{
+    /// <summary>Steam платит во внутренний кошелёк, а не живыми деньгами — считается отдельно.</summary>
+    public const string Steam = "Steam";
+}
+
 /// <summary>Цена одной штуки на конкретной площадке.</summary>
 public sealed record Quote(string Provider, decimal ListUsd, decimal PayoutUsd);
 
@@ -35,7 +42,9 @@ public sealed class PricedItem
     public List<Quote> Quotes { get; } = new();
 
     public Quote? Best => Quotes.Count == 0 ? null : Quotes.MaxBy(q => q.PayoutUsd);
-    public Quote? Steam => Quotes.FirstOrDefault(q => q.Provider == "Steam");
+    public Quote? Steam => Quotes.FirstOrDefault(q => q.Provider == Marketplaces.Steam);
+    /// <summary>Лучшее предложение среди тех, кто платит живыми деньгами.</summary>
+    public Quote? BestCash => Quotes.Where(q => q.Provider != Marketplaces.Steam).MaxBy(q => q.PayoutUsd);
     public decimal BestTotalUsd => (Best?.PayoutUsd ?? 0m) * Item.Count;
     public decimal SteamTotalUsd => (Steam?.PayoutUsd ?? 0m) * Item.Count;
 }
@@ -63,9 +72,20 @@ public sealed class Report
     public int PricedItems { get; set; }
     public int UnpricedItems { get; set; }
 
+    /// <summary>Максимум по всем площадкам — смесь наличных и кошелька Steam.</summary>
     public Money BestSplit { get; set; } = new(0, 0, 0, 0);
+    /// <summary>Часть максимума, которая приходит живыми деньгами.</summary>
+    public Money MixedCashPart { get; set; } = new(0, 0, 0, 0);
+    /// <summary>Часть максимума, которая уходит в кошелёк Steam.</summary>
+    public Money MixedWalletPart { get; set; } = new(0, 0, 0, 0);
+    /// <summary>Если продавать только там, где платят живыми деньгами.</summary>
+    public Money BestCash { get; set; } = new(0, 0, 0, 0);
+    /// <summary>Что нигде, кроме Steam, не продаётся.</summary>
+    public Money SteamOnly { get; set; } = new(0, 0, 0, 0);
     /// <summary>Сколько позиций получили цену Steam — без этого сравнение со Steam некорректно.</summary>
     public int SteamCovered { get; set; }
+    /// <summary>Сколько имён Steam не успел опросить из-за лимита запросов.</summary>
+    public int SteamSkipped { get; set; }
     /// <summary>Лучшая площадка, но только по тем позициям, где известна и цена Steam.</summary>
     public Money BestWhereSteamKnown { get; set; } = new(0, 0, 0, 0);
     public Money SteamNet { get; set; } = new(0, 0, 0, 0);

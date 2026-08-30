@@ -298,15 +298,20 @@ static void Print(Report r, int top)
         Console.WriteLine($"Продать нельзя   : {r.UnsellableCount} шт ({r.UnsellablePositions} позиций) — в суммы не входят");
     Console.WriteLine();
     Console.WriteLine("СТОИМОСТЬ");
-    Console.WriteLine($"  Steam, ценник   : {M(r.SteamGross)}");
-    Console.WriteLine($"  Steam, на руки  : {M(r.SteamNet)}   (минус 15% комиссии, деньги остаются в кошельке Steam)");
-    Console.WriteLine($"  Лучшая площадка : {M(r.BestSplit)}   (каждый предмет продан там, где платят больше — живыми деньгами)");
+    Console.WriteLine($"  Живые деньги    : {M(r.BestCash)}   (только сторонние площадки, лучшая цена по каждому предмету)");
+    Console.WriteLine($"  Кошелёк Steam   : {M(r.SteamNet)}   (весь инвентарь на Steam-маркете, минус 15%; вывести нельзя)");
+    Console.WriteLine($"  Steam, ценник   : {M(r.SteamGross)}   (столько платит покупатель, до комиссии)");
+    Console.WriteLine($"  Максимум всего  : {M(r.BestSplit)}");
+    Console.WriteLine($"                    из них {r.MixedCashPart.Rub,10:N0} ₽ живыми деньгами" +
+                      $" и {r.MixedWalletPart.Rub:N0} ₽ в кошелёк Steam");
+    if (r.SteamOnly.Rub > 0)
+        Console.WriteLine($"                    {r.SteamOnly.Rub:N0} ₽ из них не продать нигде, кроме Steam");
     if (r.SteamNet.Usd > 0 && r.SteamCovered > 0)
     {
         var gain = (r.BestWhereSteamKnown.Usd / r.SteamNet.Usd - 1) * 100;
         Console.WriteLine($"  Выгода vs Steam : {gain:+0.0;-0.0}%  (по {r.SteamCovered} из {r.PricedItems} позиций, где есть обе цены)");
-        if (r.SteamCovered < r.PricedItems)
-            Console.WriteLine("                    Steam опрошен не полностью — итог «Steam, на руки» занижен, сравнивай по проценту выше.");
+        if (r.SteamSkipped > 0)
+            Console.WriteLine($"                    Steam не опросил {r.SteamSkipped} имён (лимит) — «Кошелёк Steam» занижен, сравнивай по проценту выше.");
     }
 
     if (r.ByProvider.Count > 0)
