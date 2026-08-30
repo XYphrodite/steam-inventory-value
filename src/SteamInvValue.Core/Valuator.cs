@@ -133,15 +133,19 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         foreach (var group in priced.GroupBy(p => p.Item.AppId))
         {
             var appId = group.Key;
-            var names = group.Select(p => p.Item.MarketHashName)
-                             .Where(n => !string.IsNullOrEmpty(n))
-                             .Select(n => n!)
-                             .Distinct(StringComparer.Ordinal)
-                             .ToList();
-            if (names.Count == 0) continue;
 
             foreach (var provider in providers.Where(p => p.Supports(appId)))
             {
+                // Спрашиваем цену только на то, что эта площадка реально примет: у Steam лимит
+                // запросов, и тратить его на непередаваемое нет смысла.
+                var names = group.Where(p => opt.CountUnsellable || provider.CanSell(p.Item))
+                                 .Select(p => p.Item.MarketHashName)
+                                 .Where(n => !string.IsNullOrEmpty(n))
+                                 .Select(n => n!)
+                                 .Distinct(StringComparer.Ordinal)
+                                 .ToList();
+                if (names.Count == 0) continue;
+
                 try
                 {
                     _log($"{appNames.GetValueOrDefault(appId, appId.ToString())} → {provider.Name}: {names.Count} имён");
