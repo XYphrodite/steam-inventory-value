@@ -106,9 +106,36 @@ public static class Updater
         return (tag, assets);
     }
 
-    /// <summary>Скачивает файл, сообщая о прогрессе (скачано, всего).</summary>
+    /// <summary>
+    /// Скачивает файл, сообщая о прогрессе (скачано, всего).
+    ///
+    /// Если сервер умеет отдавать куски (<c>206 Partial Content</c>), файл берётся несколькими
+    /// соединениями сразу. Скорость обычно режут на одно соединение, поэтому на медленном
+    /// маршруте это помогает в разы; на быстром — не мешает. Любая осечка роняет нас обратно
+    /// на обычную загрузку в один поток.
+    /// </summary>
     public static async Task DownloadAsync(string url, string destination,
-        Action<long, long>? progress = null, CancellationToken ct = default)
+        Action<long, long>? progress = null, CancellationToken ct = default, int segments = 4)
+    {
+        var total = await GetLengthIfRangesSupportedAsync(url, ct);
+
+        // Мелочь дробить незачем: накладные расходы съедят выигрыш.
+        if (total is > 4 * 1024 * 1024 && segments > 1)
+        {
+            try
+            {
+                await DownloadInSegmentsAsync(url, destination, total.Value, segments, progress, ct);
+                return;
+            }
+            catch (OperationCanceledException) { throw; }
+            catch { /* не вышло — качаем как обычно */ }
+        }
+
+        await DownloadSingleAsync(url, destination, progress, ct);
+    }
+
+    private static async Task DownloadSingleAsync(string url, string destination,
+        Action<long, long>? progress, CancellationToken ct)
     {
         using var response = await Http.Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
@@ -125,6 +152,78 @@ public static class Updater
             await output.WriteAsync(buffer.AsMemory(0, read), ct);
             done += read;
             progress?.Invoke(done, total);
+        }
+    }
+
+    /// <summary>Размер файла, если сервер согласен отдавать его кусками; иначе null.</summary>
+    private static async Task<long?> GetLengthIfRangesSupportedAsync(string url, CancellationToken ct)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 0);
+
+            using var response = await Http.Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            if (response.StatusCode != System.Net.HttpStatusCode.PartialContent) return null;
+
+            return response.Content.Headers.ContentRange?.Length;
+        }
+        catch { return null; }
+    }
+
+    private static async Task DownloadInSegmentsAsync(string url, string destination, long total,
+        int segments, Action<long, long>? progress, CancellationToken ct)
+    {
+        var temp = destination + ".part";
+        long done = 0;
+
+        try
+        {
+            using (var file = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.Write))
+                file.SetLength(total);
+
+            var size = total / segments;
+            var tasks = new List<Task>();
+
+            for (var i = 0; i < segments; i++)
+            {
+                var from = i * size;
+                var to = i == segments - 1 ? total - 1 : from + size - 1;
+
+                tasks.Add(Task.Run(async () =>
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                    request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(from, to);
+
+                    using var response = await Http.Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+                    response.EnsureSuccessStatusCode();
+
+                    await using var input = await response.Content.ReadAsStreamAsync(ct);
+                    using var handle = File.OpenHandle(temp, FileMode.Open, FileAccess.Write);
+
+                    var buffer = new byte[131072];
+                    var position = from;
+                    int read;
+                    while ((read = await input.ReadAsync(buffer, ct)) > 0)
+                    {
+                        await RandomAccess.WriteAsync(handle, buffer.AsMemory(0, read), position, ct);
+                        position += read;
+                        progress?.Invoke(Interlocked.Add(ref done, read), total);
+                    }
+                }, ct));
+            }
+
+            await Task.WhenAll(tasks);
+
+            if (new FileInfo(temp).Length != total)
+                throw new InvalidOperationException("размер скачанного файла не совпал");
+
+            File.Move(temp, destination, overwrite: true);
+        }
+        catch
+        {
+            try { File.Delete(temp); } catch { /* уберётся при следующей попытке */ }
+            throw;
         }
     }
 
