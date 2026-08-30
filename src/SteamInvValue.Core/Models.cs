@@ -56,6 +56,9 @@ public sealed class PricedItem
     /// <summary>Сколько таких предметов продалось на Steam-маркете за сутки. 0 — ни одного.</summary>
     public int SteamVolume { get; set; }
 
+    /// <summary>Медианная цена сделок на Steam, за штуку. 0 — неизвестна.</summary>
+    public decimal SteamMedianUsd { get; set; }
+
     /// <summary>Цена на Steam есть, а покупателей за сутки не было — продать будет нечем и некому.</summary>
     public bool NoSales => Steam is not null && SteamVolume == 0;
 
@@ -105,6 +108,10 @@ public sealed class Report
     public Money BestCash { get; set; } = new(0, 0, 0, 0);
     /// <summary>Что нигде, кроме Steam, не продаётся.</summary>
     public Money SteamOnly { get; set; } = new(0, 0, 0, 0);
+    /// <summary>Кошелёк Steam, посчитанный по медиане сделок вместо цены самого дешёвого лота.</summary>
+    public Money SteamNetMedian { get; set; } = new(0, 0, 0, 0);
+    /// <summary>По скольким позициям медиана известна — по остальным взята обычная цена.</summary>
+    public int MedianCovered { get; set; }
     /// <summary>Сколько позиций достаточно продать, чтобы получить большую часть денег.</summary>
     public int SellPlanPositions { get; set; }
     public Money SellPlanValue { get; set; } = new(0, 0, 0, 0);

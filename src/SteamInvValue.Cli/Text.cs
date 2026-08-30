@@ -103,6 +103,11 @@ public static class T
     public static string WalletNote => P(
         "   (весь инвентарь на Steam-маркете за вычетом его комиссии; вывести нельзя)",
         "   (everything sold on the Steam Market, minus its fee; cannot be withdrawn)");
+    public static string MedianRow => P("  Steam, медиана  : ", "  Steam, median   : ");
+    public static string MedianNote(int covered, int total) => P(
+        $"   (по цене реальных сделок, а не самого дешёвого лота; известна для {covered} из {total})",
+        $"   (by actual sale prices rather than the cheapest listing; known for {covered} of {total})");
+
     public static string GrossRow => P("  Steam, ценник   : ", "  Steam list price: ");
     public static string GrossNote => P(
         "   (столько платит покупатель, до комиссии)", "   (what the buyer pays, before the fee)");

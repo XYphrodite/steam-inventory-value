@@ -181,6 +181,7 @@ dotnet run --project src/SteamInvValue.Cli -- nickname --json report.json --csv 
 |---|---|
 | **Real money** | third-party marketplaces only; each item priced at whichever one pays the most, after its fee |
 | **Steam wallet** | everything sold on the Steam Market, minus its fee. This is an internal balance and cannot be withdrawn |
+| **Steam by median** | the same, but from the median price of actual recent sales instead of the cheapest listing |
 | **Steam list price** | sum of `lowest_price` — what a buyer pays, before the fee |
 | **Maximum overall** | the best of every marketplace at once. It mixes cash and wallet money, so the split is printed underneath |
 | **Per marketplace** | what you get if you sell everything a given marketplace accepts there |
@@ -197,6 +198,11 @@ how many positions and how much money stay in the tail.
 **You can go and sell straight from the card.** The item name links to its Steam Market
 listing, and every marketplace in the price list is a link too: Steam goes to the item page,
 the others to a search by name (their item URLs are built in their own way, with no guarantees).
+
+**Median versus the cheapest listing.** `lowest_price` is one particular listing right now, and
+a single undercutting seller moves it. `median_price` is what the item actually sold for over
+the last few days. Both arrive in the same response, so the second total costs nothing; the
+report says how many positions have a known median — it fills in as the price cache refreshes.
 
 **Liquidity is shown separately.** Every position reports how many such items were sold on
 the Steam Market in the last 24 hours. A price without sales is not money: an item worth $15
@@ -272,8 +278,11 @@ This is the main constraint on the whole idea:
 
 * Buff163 — the most representative marketplace for CS2, but it has no public API and needs
   cookies. Not wired up.
-* Steam buy orders (the instant-sell price) — that requires scraping the listing page for
-  `item_nameid`, one more request per item on top of the rate limit.
+* Steam buy orders (the instant-sell price) — **not available**. The order book is only served
+  by internal `item_nameid`, and Steam moved the listing page to server-side React where that
+  identifier no longer appears: not in the HTML, not in the old `render` endpoint, not in the
+  page bundles — orders load on click from the browser. Digging it out means reverse
+  engineering their SPA for a single number. The median of actual sales is used instead.
 * Instant sell to bots (usually 40–60% of the price) — the marketplaces publish listings,
   not their buyout prices.
 * CS2 floats and patterns — prices are looked up by `market_hash_name`, i.e. by name and

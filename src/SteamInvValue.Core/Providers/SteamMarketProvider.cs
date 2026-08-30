@@ -54,6 +54,13 @@ public sealed partial class SteamMarketProvider(
     /// </summary>
     public Dictionary<string, int> Volume { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Медианная цена сделок за последние дни. Приходит тем же ответом, что и обычная цена.
+    /// `lowest_price` — это самый дешёвый лот прямо сейчас, то есть чья-то текущая жадность
+    /// или чей-то демпинг; медиана — по чём предмет действительно уходил.
+    /// </summary>
+    public Dictionary<string, decimal> Median { get; } = new(StringComparer.Ordinal);
+
     /// <summary>Сколько имён осталось неопрошенными из-за лимита/блокировки.</summary>
     public int Skipped { get; private set; }
 
@@ -84,6 +91,7 @@ public sealed partial class SteamMarketProvider(
             {
                 if (hit.Usd > 0) result[name] = hit.Usd;
                 if (hit.Volume > 0) Volume[name] = hit.Volume;
+                if (hit.Median > 0) Median[name] = hit.Median;
             }
             else pending.Add(name);
         }
@@ -124,6 +132,7 @@ public sealed partial class SteamMarketProvider(
                 cache.Set(CacheKey(appId, name), price);
                 if (price.Usd > 0) result[name] = price.Usd;
                 if (price.Volume > 0) Volume[name] = price.Volume;
+                if (price.Median > 0) Median[name] = price.Median;
             }
 
             done++;
@@ -167,11 +176,12 @@ public sealed partial class SteamMarketProvider(
                 using var doc = JsonDocument.Parse(body);
                 var root = doc.RootElement;
                 if (!root.TryGetProperty("success", out var ok) || ok.ValueKind != JsonValueKind.True)
-                    return new SteamPrice(0m, 0); // предмет не торгуется — запоминаем, чтобы не спрашивать снова
+                    return new SteamPrice(0m, 0, 0m); // предмет не торгуется — запоминаем, чтобы не спрашивать снова
 
                 var raw = Str(root, "lowest_price") ?? Str(root, "median_price");
+                var median = ParseMoney(Str(root, "median_price"));
                 var volume = int.TryParse((Str(root, "volume") ?? "0").Replace(",", ""), out var v) ? v : 0;
-                return new SteamPrice(ParseMoney(raw), volume);
+                return new SteamPrice(ParseMoney(raw), volume, median);
             }
             catch { return null; }
         }
@@ -191,5 +201,6 @@ public sealed partial class SteamMarketProvider(
         return decimal.TryParse(num, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0m;
     }
 
-    public sealed record SteamPrice(decimal Usd, int Volume);
+    /// <summary>Median появился позже Usd и Volume: в старых записях кэша его нет, там будет 0.</summary>
+    public sealed record SteamPrice(decimal Usd, int Volume, decimal Median = 0m);
 }

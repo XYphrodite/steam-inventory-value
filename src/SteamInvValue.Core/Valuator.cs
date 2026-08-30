@@ -192,8 +192,11 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
 
         // Объём продаж собран попутно опросом Steam — раскладываем его по позициям.
         foreach (var p in priced)
-            if (p.Item.MarketHashName is { } name && steam.Volume.TryGetValue(name, out var volume))
-                p.SteamVolume = volume;
+        {
+            if (p.Item.MarketHashName is not { } name) continue;
+            if (steam.Volume.TryGetValue(name, out var volume)) p.SteamVolume = volume;
+            if (steam.Median.TryGetValue(name, out var median)) p.SteamMedianUsd = median;
+        }
 
         report.PricedItems = priced.Count(p => p.Quotes.Count > 0);
         report.UnpricedItems = priced.Count - report.PricedItems;
@@ -241,6 +244,12 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         report.SteamOnly = fx.Convert(steamOnly);
         report.SteamNet = fx.Convert(priced.Sum(p => p.SteamTotalUsd));
         report.SteamGross = fx.Convert(priced.Sum(p => (p.Steam?.ListUsd ?? 0m) * p.Item.Count));
+
+        // Второй взгляд на кошелёк Steam: по медиане сделок там, где она известна.
+        var steamPriced = priced.Where(p => p.Steam is not null).ToList();
+        report.MedianCovered = steamPriced.Count(p => p.SteamMedianUsd > 0);
+        report.SteamNetMedian = fx.Convert(steamPriced.Sum(p =>
+            SteamFee.Net(p.SteamMedianUsd > 0 ? p.SteamMedianUsd : p.Steam!.ListUsd) * p.Item.Count));
 
         var withSteam = priced.Where(p => p.Steam is not null).ToList();
         report.SteamCovered = withSteam.Count;

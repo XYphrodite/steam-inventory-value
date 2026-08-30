@@ -194,6 +194,8 @@ const I18N = {
     collected: 'собрано', rate: 'курс ЦБ', counting: 'Считаю: ', adding: 'Добавляю…', failed: 'не получилось',
     tCash: 'Живые деньги', tCashSub: 'только сторонние площадки',
     tWallet: 'Кошелёк Steam', tWalletSub: 'за вычетом комиссии Steam, вывести нельзя',
+    tMedian: 'Steam по медиане', tMedianSub: (a, b) => 'по цене реальных сделок, а не самого дешёвого лота · известна для ' + a + ' из ' + b,
+    medianShort: 'медиана ',
     tMax: 'Максимум всего', tMaxCash: ' ₽ живыми + ', tMaxWallet: ' ₽ в кошелёк', tMaxOnly: ' ₽ только через Steam',
     tGross: 'Steam, ценник для покупателя', tGrossSub: '$ · до комиссии',
     tGain: 'Выгода против Steam', tGainSub: ' позиций', tGainSkipped: ' · Steam не опросил ', tGainNames: ' имён',
@@ -245,6 +247,8 @@ const I18N = {
     collected: 'collected', rate: 'CBR rate', counting: 'Working on: ', adding: 'Adding…', failed: 'failed',
     tCash: 'Real money', tCashSub: 'third-party marketplaces only',
     tWallet: 'Steam wallet', tWalletSub: 'minus the Steam fee, cannot be withdrawn',
+    tMedian: 'Steam by median', tMedianSub: (a, b) => 'by actual sale prices rather than the cheapest listing · known for ' + a + ' of ' + b,
+    medianShort: 'median ',
     tMax: 'Maximum overall', tMaxCash: ' RUB cash + ', tMaxWallet: ' RUB into the wallet', tMaxOnly: ' RUB only via Steam',
     tGross: 'Steam list price', tGrossSub: '$ · before the fee',
     tGain: 'Gain vs Steam', tGainSub: ' positions', tGainSkipped: ' · Steam skipped ', tGainNames: ' names',
@@ -394,6 +398,10 @@ function render() {
     tile(t('tCash'), money(cash.rub, 0) + ' ' + t('rub'),
          money(cash.usd) + ' $ · ' + money(cash.usdt) + ' USDT · ' + money(cash.btc, 8) + ' BTC · ' + t('tCashSub')) +
     tile(t('tWallet'), money(s.rub, 0) + ' ' + t('rub'), money(s.usd) + ' $ · ' + t('tWalletSub')) +
+    (r.steamCovered > 0
+      ? tile(t('tMedian'), money((r.steamNetMedian || {rub: 0}).rub, 0) + ' ' + t('rub'),
+             t('tMedianSub')(r.medianCovered || 0, r.steamCovered))
+      : '') +
     tile(t('tMax'), money(b.rub, 0) + ' ' + t('rub'),
          money(mixCash.rub, 0) + t('tMaxCash') + money(mixWallet.rub, 0) + t('tMaxWallet') +
          (steamOnly.rub > 0 ? ' · ' + money(steamOnly.rub, 0) + t('tMaxOnly') : '')) +
@@ -578,6 +586,9 @@ function renderItems(reset = true) {
       .map(q => '<div class="q"><span>' + link(listingUrl(q.provider, i), esc(q.provider)) +
                 '</span><span>' + money(q.payoutUsd) + ' $</span></div>').join('');
     const badge = !i.tradable && !i.marketable ? t('badgeNoSell') : i.tradable ? t('badgeTradable') : t('badgeMarket');
+    const median = p.steamMedianUsd > 0
+      ? '<div class="q"><span>' + t('medianShort') + '</span><span>' + money(p.steamMedianUsd) + ' $</span></div>'
+      : '';
     const sales = p.steam
       ? '<div class="q"><span>' + (p.steamVolume > 0 ? p.steamVolume + t('salesDay') : t('noSales')) + '</span><span></span></div>'
       : '';
@@ -586,7 +597,7 @@ function renderItems(reset = true) {
       '<div class="nm">' + link(listingUrl('Steam', i), esc(i.marketHashName || i.name)) + '</div>' +
       '<div class="pr">' + (best ? money(p.bestTotalUsd * report.usdRub, 0) + ' ' + t('rub') : '<span class="muted">' + t('noPrice') + '</span>') + '</div>' +
       '<div class="q"><span>' + i.count + ' ' + t('pcs') + '</span><span>' + (best ? money(best.payoutUsd) + t('perPc') : '') + '</span></div>' +
-      quotes + sales +
+      quotes + median + sales +
       '<div><span class="badge">' + esc(appName(i.appId)) + '</span> <span class="badge">' + badge + '</span> ' +
       (i.rarity ? '<span class="badge">' + esc(i.rarity) + '</span>' : '') + '</div>' +
     '</div>';

@@ -549,6 +549,8 @@ static void Print(Report r, int top)
     Console.WriteLine(T.ValueHeader);
     Console.WriteLine(T.CashRow + M(r.BestCash) + T.CashNote);
     Console.WriteLine(T.WalletRow + M(r.SteamNet) + T.WalletNote);
+    if (r.SteamCovered > 0)
+        Console.WriteLine(T.MedianRow + M(r.SteamNetMedian) + T.MedianNote(r.MedianCovered, r.SteamCovered));
     Console.WriteLine(T.GrossRow + M(r.SteamGross) + T.GrossNote);
     Console.WriteLine(T.MaxRow + M(r.BestSplit));
     Console.WriteLine(T.MixNote(r.MixedCashPart.Rub, r.MixedWalletPart.Rub));
