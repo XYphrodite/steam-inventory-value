@@ -304,6 +304,12 @@ This is the main constraint on the whole idea:
   `dpapi:AQAAAN...` string that is useless on another machine or under another account. It does
   not stop malware already running as you — it would just ask Windows to decrypt.
 
+  **On the wire the cookie goes to Steam only.** It lives in a container bound to
+  `steamcommunity.com`, `store.steampowered.com` and `api.steampowered.com`; marketplaces, FX
+  feeds, GitHub and the image CDN never see it. Before 0.6.1 it was added as a default header and
+  travelled to every host the program contacted — if you used a cookie on 0.6.0 or earlier, log
+  out of Steam in your browser (that kills the session) and set a fresh one.
+
   The same values are read from `STEAMINV_COOKIE` and `STEAMINV_PROXY`, and in the web UI they
   are set in the Settings panel.
 

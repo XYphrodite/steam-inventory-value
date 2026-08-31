@@ -108,9 +108,9 @@ public static class T
     public static string PricedLine(int priced, int unpriced) => P(
         $"С ценой          : {priced} позиций, без цены: {unpriced}",
         $"Priced           : {priced} positions, no price: {unpriced}");
-    public static string UnsellableLine(int items, int positions) => P(
-        $"Продать нельзя   : {items} шт ({positions} позиций) — в суммы не входят",
-        $"Cannot be sold   : {items} items ({positions} positions) — excluded from totals");
+    public static string UnsellableLine(int items, int positions, bool counted) => P(
+        $"Продать нельзя   : {items} шт ({positions} позиций) — {(counted ? "включены в суммы" : "в суммы не входят")}",
+        $"Cannot be sold   : {items} items ({positions} positions) — {(counted ? "included in totals" : "excluded from totals")}");
 
     /// <summary>Хвост строки в топе: продаж за сутки на Steam.</summary>
     public static string Sales(SteamInvValue.Core.PricedItem p) =>

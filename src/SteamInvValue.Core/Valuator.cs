@@ -223,6 +223,7 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         var unsellable = priced.Where(p => !p.Item.Tradable && !p.Item.Marketable).ToList();
         report.UnsellablePositions = unsellable.Count;
         report.UnsellableCount = unsellable.Sum(p => p.Item.Count);
+        report.CountedUnsellable = opt.CountUnsellable;
         if (report.UnsellablePositions > 0 && !opt.CountUnsellable)
             report.Notes.Add(S.UnsellableNote(report.UnsellableCount, report.UnsellablePositions));
 

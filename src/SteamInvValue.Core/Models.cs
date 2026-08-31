@@ -92,6 +92,9 @@ public sealed class Report
     public int LockedPositions { get; set; }
     public DateTimeOffset? LockedUntilNearest { get; set; }
 
+    /// <summary>Вошло ли непродаваемое в суммы — ключ --count-unsellable.</summary>
+    public bool CountedUnsellable { get; set; }
+
     /// <summary>Позиции, которые нельзя продать вообще: без обмена и без маркета.</summary>
     public int UnsellablePositions { get; set; }
     public int UnsellableCount { get; set; }

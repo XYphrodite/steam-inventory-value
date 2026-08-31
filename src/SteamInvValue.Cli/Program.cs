@@ -589,7 +589,7 @@ static void Print(Report r, int top)
     Console.WriteLine(T.TradableLine(r.TradableItems, r.MarketableItems));
     Console.WriteLine(T.PricedLine(r.PricedItems, r.UnpricedItems));
     if (r.UnsellableCount > 0)
-        Console.WriteLine(T.UnsellableLine(r.UnsellableCount, r.UnsellablePositions));
+        Console.WriteLine(T.UnsellableLine(r.UnsellableCount, r.UnsellablePositions, r.CountedUnsellable));
     if (r.NoSalesPositions > 0)
         Console.WriteLine(T.NoSalesLine(r.NoSalesPositions, r.NoSalesValue.Rub));
     if (r.LockedPositions > 0 && r.LockedUntilNearest is { } until)
