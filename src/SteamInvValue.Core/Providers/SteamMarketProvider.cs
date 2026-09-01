@@ -75,7 +75,9 @@ public sealed partial class SteamMarketProvider(
     /// <summary>Steam-маркету обмен не нужен, нужен признак marketable.</summary>
     public bool CanSell(InventoryItem item) => item.Marketable;
 
-    [GeneratedRegex(@"[\d.,]+")]
+    // Число целиком, вместе с разделителями групп — в том числе пробелом и неразрывным
+    // пробелом, которыми Steam разделяет тысячи в европейских форматах.
+    [GeneratedRegex(@"\d[\d.,  ]*\d|\d")]
     private static partial Regex NumberPart();
 
     public async Task<IReadOnlyDictionary<string, decimal>> GetPricesUsdAsync(
@@ -191,14 +193,29 @@ public sealed partial class SteamMarketProvider(
     private static string? Str(JsonElement e, string n) =>
         e.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
-    /// <summary>"$1,234.56" -> 1234.56</summary>
+    /// <summary>
+    /// "$1,234.56" -> 1234.56, "0,03 руб." -> 0.03, "1.234,56 €" -> 1234.56.
+    ///
+    /// Слепо выкидывать запятые нельзя: Steam отдаёт цену в валюте кошелька и в её формате, а
+    /// в половине мира запятая — десятичный разделитель. Тогда «0,03» превращалось в 3, то есть
+    /// в сто раз дороже. Считаем разделитель десятичным, только если за ним одна-две цифры до
+    /// конца числа: «1,234» — это тысяча с лишним, а «1,23» — рубль двадцать три.
+    /// </summary>
     internal static decimal ParseMoney(string? s)
     {
         if (string.IsNullOrWhiteSpace(s)) return 0m;
         var m = NumberPart().Match(s.Replace("&#36;", "$"));
         if (!m.Success) return 0m;
-        var num = m.Value.Replace(",", "");
-        return decimal.TryParse(num, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0m;
+
+        var num = m.Value.Replace(" ", "").Replace(" ", "");
+        var sep = Math.Max(num.LastIndexOf(','), num.LastIndexOf('.'));
+        var tail = sep >= 0 ? num.Length - sep - 1 : -1;
+
+        var whole = (tail is 1 or 2 ? num[..sep] : num).Replace(",", "").Replace(".", "");
+        var fraction = tail is 1 or 2 ? num[(sep + 1)..] : "";
+
+        var normalized = fraction.Length > 0 ? $"{whole}.{fraction}" : whole;
+        return decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0m;
     }
 
     /// <summary>Median появился позже Usd и Volume: в старых записях кэша его нет, там будет 0.</summary>

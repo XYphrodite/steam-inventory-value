@@ -148,6 +148,10 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
 
         var priced = all.Select(i => new PricedItem { Item = i }).ToList();
 
+        // Площадку опрашиваем по разу на игру, и отказать она может на каждой. Копим самый
+        // старый возраст на площадку, чтобы в замечаниях была одна строка, а не четыре подряд.
+        var staleByProvider = new Dictionary<string, TimeSpan>(StringComparer.Ordinal);
+
         foreach (var group in priced.GroupBy(p => p.Item.AppId))
         {
             var appId = group.Key;
@@ -169,11 +173,10 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
                     _log(S.AskingProvider(appNames.GetValueOrDefault(appId, appId.ToString()), provider.Name, names.Count));
                     var prices = await provider.GetPricesUsdAsync(appId, names, ct);
 
-                    if (provider.StaleAge is { } age)
-                    {
-                        var note = S.StalePricesNote(provider.Name, age);
-                        if (!report.Notes.Contains(note)) report.Notes.Add(note);
-                    }
+                    if (provider.StaleAge is { } age &&
+                        age > staleByProvider.GetValueOrDefault(provider.Name))
+                        staleByProvider[provider.Name] = age;
+
                     foreach (var p in group)
                     {
                         if (p.Item.MarketHashName is null) continue;
@@ -190,6 +193,9 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
                 }
             }
         }
+
+        foreach (var (name, age) in staleByProvider.OrderBy(x => x.Key, StringComparer.Ordinal))
+            report.Notes.Add(S.StalePricesNote(name, age));
 
         report.SteamSkipped = steam.Skipped;
         if (steam.Skipped > 0)
