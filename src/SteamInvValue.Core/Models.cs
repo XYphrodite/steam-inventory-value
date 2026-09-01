@@ -50,7 +50,17 @@ public sealed class PricedItem
     public required InventoryItem Item { get; init; }
     public List<Quote> Quotes { get; set; } = [];
 
-    public Quote? Best => Quotes.Count == 0 ? null : Quotes.MaxBy(q => q.PayoutUsd);
+    /// <summary>
+    /// Площадки, чья цена признана недостоверной: она заметно выше того, что за ту же вещь
+    /// просят остальные. В выбор лучшей такие цены не идут — см. <see cref="QuoteOutliers"/>.
+    /// На строку самой площадки в отчёте это не влияет: там показано ровно то, что она обещает.
+    /// </summary>
+    public List<string> Outliers { get; set; } = [];
+
+    private IEnumerable<Quote> Trusted =>
+        Outliers.Count == 0 ? Quotes : Quotes.Where(q => !Outliers.Contains(q.Provider, StringComparer.Ordinal));
+
+    public Quote? Best => Trusted.MaxBy(q => q.PayoutUsd);
     public Quote? Steam => Quotes.FirstOrDefault(q => q.Provider == Marketplaces.Steam);
 
     /// <summary>Сколько таких предметов продалось на Steam-маркете за сутки. 0 — ни одного.</summary>
@@ -65,7 +75,7 @@ public sealed class PricedItem
     /// <summary>Позиция входит в минимальный набор, ради которого стоит возиться.</summary>
     public bool InSellPlan { get; set; }
     /// <summary>Лучшее предложение среди тех, кто платит живыми деньгами.</summary>
-    public Quote? BestCash => Quotes.Where(q => q.Provider != Marketplaces.Steam).MaxBy(q => q.PayoutUsd);
+    public Quote? BestCash => Trusted.Where(q => q.Provider != Marketplaces.Steam).MaxBy(q => q.PayoutUsd);
     public decimal BestTotalUsd => (Best?.PayoutUsd ?? 0m) * Item.Count;
     public decimal SteamTotalUsd => (Steam?.PayoutUsd ?? 0m) * Item.Count;
 }
@@ -94,6 +104,10 @@ public sealed class Report
 
     /// <summary>Вошло ли непродаваемое в суммы — ключ --count-unsellable.</summary>
     public bool CountedUnsellable { get; set; }
+
+    /// <summary>Сколько цен отброшено как недостоверные и на скольких позициях.</summary>
+    public int OutlierQuotes { get; set; }
+    public int OutlierPositions { get; set; }
 
     /// <summary>Позиции, которые нельзя продать вообще: без обмена и без маркета.</summary>
     public int UnsellablePositions { get; set; }

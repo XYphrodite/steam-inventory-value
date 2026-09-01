@@ -197,6 +197,12 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
         foreach (var (name, age) in staleByProvider.OrderBy(x => x.Key, StringComparer.Ordinal))
             report.Notes.Add(S.StalePricesNote(name, age));
 
+        // Цены собраны — теперь можно сверить площадки между собой и отбросить завравшихся.
+        report.OutlierQuotes = priced.Sum(p => QuoteOutliers.Mark(p));
+        report.OutlierPositions = priced.Count(p => p.Outliers.Count > 0);
+        if (report.OutlierQuotes > 0)
+            report.Notes.Add(S.OutlierNote(report.OutlierQuotes, report.OutlierPositions));
+
         report.SteamSkipped = steam.Skipped;
         if (steam.Skipped > 0)
             report.Notes.Add(S.SteamSkippedNote(steam.Skipped));

@@ -131,6 +131,10 @@ public static class S
         $"{items} шт нельзя обменять временно, ближайшие освободятся {until:dd.MM.yyyy} — потом это снова деньги.",
         $"{items} items are on a temporary trade hold, the earliest clears on {until:dd.MM.yyyy} — after that they are money again.");
 
+    public static string OutlierNote(int quotes, int positions) => Loc.Pick(
+        $"{quotes} цен на {positions} позициях отброшено: они втрое и более выше того, что за ту же вещь просят остальные площадки. Обычно это разметка ботов на копеечных предметах.",
+        $"{quotes} prices on {positions} positions were dropped: they are 3x or more above what the other marketplaces ask for the same item. Usually bot pricing on cheap items.");
+
     public static string PartialInventoryNote(string app, int got, int total) => Loc.Pick(
         $"{app}: Steam отдал {got} предметов из {total}, которые сам же насчитал. Так он прячет недавно полученное — эти вещи в суммы не попали.",
         $"{app}: Steam returned {got} of the {total} items it counts itself. That is how it hides freshly received items — they are missing from the totals.");

@@ -153,6 +153,7 @@
 | `Http.cs` | 59 | Единый `HttpClient`: сжатие, User-Agent, прокси, cookie |
 | `CurrencyService.cs` | 51 | Курсы ЦБ РФ и CoinGecko |
 | `FileCache.cs` | 50 | Файловый кэш с TTL |
+| `QuoteOutliers.cs` | 58 | Отсев цен, которые втрое выше медианы остальных площадок |
 | `SteamIdResolver.cs` | 48 | Ссылка, ник или SteamID64 → SteamID64 |
 | `KnownApps.cs` | 30 | 17 известных инвентарей для запасного перебора |
 

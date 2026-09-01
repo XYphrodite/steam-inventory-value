@@ -209,6 +209,15 @@ dotnet run --project src/SteamInvValue.Cli -- nickname --json report.json --csv 
 Steam is kept apart from the rest on purpose: it pays into an internal wallet rather than in
 real money, and adding the two into one number would be lying to yourself.
 
+**Prices that lie are dropped.** Taking the best of four quotes for every item means overstating
+things systematically: whichever source is momentarily the most optimistic wins. On cheap skins
+that is not noise but bot pricing — Waxpeer's list has one identical price on a hundred different
+items at once, sometimes several times what everyone else asks for the same thing. So a price
+that exceeds the median of the others by 3x or more is excluded from the best-price choice, and
+the report says so in its notes. At least two other opinions are required: with a single
+disagreement there is no telling which of the two is wrong. The marketplace's own row in the
+"by marketplace" table is untouched — it shows exactly what that marketplace promises.
+
 **There is an answer to "what should I sell".** A catalogue report says what everything is
 worth, but the decision looks different: usually a small share of positions carries almost all
 the money, and the rest is a long tail where every position needs its own listing. So the
