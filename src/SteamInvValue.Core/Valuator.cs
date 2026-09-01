@@ -127,6 +127,10 @@ public sealed class Valuator(FileCache? cache = null, Action<string>? log = null
             await Task.Delay(1200, ct);
         }
 
+        // Steam иногда отдаёт меньше, чем сам насчитал. Без этой отметки итог просто занижен.
+        foreach (var (app, got, total) in inv.Shortfalls)
+            report.Notes.Add(S.PartialInventoryNote(app, got, total));
+
         report.TotalItems = all.Sum(i => i.Count);
         report.UniqueItems = all.Count;
         report.TradableItems = all.Where(i => i.Tradable).Sum(i => i.Count);

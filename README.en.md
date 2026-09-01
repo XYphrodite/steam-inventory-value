@@ -283,6 +283,10 @@ This is the main constraint on the whole idea:
   fixed pause — the backoff already paid for the refusal, and extra caution costs on top.
 * Whatever does not fit the budget is reported as "not queried". Run it again — the cache
   accumulates between runs and coverage grows.
+* Steam sometimes returns fewer items than it counts itself: the item is already visible in the
+  game while `/inventory/` still omits it, which happens with freshly received things. The report
+  compares against `total_inventory_count` and says so in its notes; nothing can be done about it
+  except waiting and running again.
 * The inventory endpoint is rate-limited per IP too, and on some networks (Russian ones in
   particular) anonymous requests to `/inventory/` hit 429 almost immediately. Two ways
   around it:

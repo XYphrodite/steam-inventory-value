@@ -11,6 +11,13 @@ public sealed partial class SteamInventoryClient(Action<string>? log = null)
 {
     private readonly Action<string> _log = log ?? (_ => { });
 
+    /// <summary>
+    /// Инвентари, где Steam отдал меньше предметов, чем сам насчитал в <c>total_inventory_count</c>.
+    /// Так он ведёт себя с недавно полученными вещами: в игре они уже есть, в выдаче ещё нет.
+    /// Молчать об этом нельзя — итог получается занижен без единого признака.
+    /// </summary>
+    public List<(string App, int Got, int Total)> Shortfalls { get; } = [];
+
     public async Task<IReadOnlyList<InventoryContext>> GetContextsAsync(string steamId64, CancellationToken ct = default)
     {
         var html = await Http.Client.GetStringAsync(
@@ -52,6 +59,7 @@ public sealed partial class SteamInventoryClient(Action<string>? log = null)
         var items = new Dictionary<string, InventoryItem>();
         string? start = null;
         var page = 0;
+        var declared = 0;
 
         while (!ct.IsCancellationRequested)
         {
@@ -63,6 +71,12 @@ public sealed partial class SteamInventoryClient(Action<string>? log = null)
 
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
+
+            // Сколько предметов Steam насчитал у себя — сверимся с этим, когда всё вычитаем.
+            if (root.TryGetProperty("total_inventory_count", out var declaredElement) &&
+                declaredElement.ValueKind == JsonValueKind.Number)
+                declared = Math.Max(declared, declaredElement.GetInt32());
+
             if (!root.TryGetProperty("assets", out var assets) ||
                 !root.TryGetProperty("descriptions", out var descs)) break;
 
@@ -103,6 +117,13 @@ public sealed partial class SteamInventoryClient(Action<string>? log = null)
             _log(S.PageRead(ctx.AppName, page, items.Values.Sum(i => i.Count)));
             if (!more || start is null) break;
             await Task.Delay(1200, ct);
+        }
+
+        var got = items.Values.Sum(i => i.Count);
+        if (declared > got)
+        {
+            Shortfalls.Add((ctx.AppName, got, declared));
+            _log(S.PartialInventoryNote(ctx.AppName, got, declared));
         }
 
         return items.Values.ToList();
